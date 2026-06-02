@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 
 // Claves para localStorage
-const STORAGE_KEY = 'cajachica-data';
+const STORAGE_KEY = 'saraia-data';
 
 function loadState() {
   try {

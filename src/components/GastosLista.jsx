@@ -62,39 +62,42 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
         </table>
       </div>
 
-      {/* Vista Mobile: Cards */}
-      <div className="md:hidden space-y-3">
+      {/* Vista Mobile: Cards optimizados táctiles */}
+      <div className="md:hidden space-y-2.5">
         {gastos.map((gasto) => (
-          <div key={gasto.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{gasto.descripcion}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {new Date(gasto.fecha + 'T00:00:00').toLocaleDateString('es-PE')}
-                </p>
-              </div>
-              <div className="text-right ml-2">
-                <p className={`text-sm font-semibold ${gasto.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}>
-                  {gasto.tipo === 'gasto' ? '-' : '+'} S/ {gasto.monto.toFixed(2)}
-                </p>
+          <div key={gasto.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden active:bg-gray-50 transition-colors">
+            {/* Fila principal */}
+            <div className="p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 leading-tight truncate">{gasto.descripcion}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(gasto.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-sm font-bold ${gasto.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}>
+                    {gasto.tipo === 'gasto' ? '-' : '+'} S/ {gasto.monto.toFixed(2)}
+                  </p>
+                  <div className="mt-1.5">{getEstadoBadge(gasto.estado)}</div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <div>{getEstadoBadge(gasto.estado)}</div>
+            {/* Botón de acción - barra inferior */}
+            <div className="border-t border-gray-100 bg-gray-50/50">
               {gasto.facturaId ? (
                 <button
                   onClick={() => onVerFactura?.(gasto)}
-                  className="text-xs text-blue-600 underline"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-blue-600 font-medium active:bg-blue-50 transition-colors"
                 >
-                  Ver factura
+                  <CheckCircle size={16} /> Ver factura adjunta
                 </button>
               ) : (
                 <button
                   onClick={() => onAdjuntarFactura?.(gasto)}
-                  className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-gray-600 font-medium active:bg-blue-50 transition-colors"
                 >
-                  <Camera size={14} />
-                  Adjuntar
+                  <Camera size={16} /> Adjuntar factura
                 </button>
               )}
             </div>

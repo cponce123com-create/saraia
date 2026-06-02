@@ -93,7 +93,7 @@ export default function Exportacion() {
       { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
     ];
 
-    const filename = `CajaChica_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const filename = `SaraIA_${new Date().toISOString().split('T')[0]}.xlsx`;
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
     // Descargar
