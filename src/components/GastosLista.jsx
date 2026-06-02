@@ -1,5 +1,5 @@
 import { Camera, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
-import useGastosStore from '../store/gastosStore';
+import { formatFecha, formatFechaCorta } from '../utils/formatFecha';
 
 export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura }) {
   if (!gastos || gastos.length === 0) {
@@ -28,9 +28,7 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
           <tbody className="divide-y divide-gray-100">
             {gastos.map((gasto) => (
               <tr key={gasto.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {new Date(gasto.fecha + 'T00:00:00').toLocaleDateString('es-PE')}
-                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{formatFecha(gasto.fecha)}</td>
                 <td className="px-4 py-3">
                   <p className="text-sm font-medium truncate max-w-[250px]">{gasto.descripcion}</p>
                 </td>
@@ -40,19 +38,10 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
                 <td className="px-4 py-3 text-center">{getEstadoBadge(gasto.estado)}</td>
                 <td className="px-4 py-3 text-center">
                   {gasto.facturaId ? (
-                    <button
-                      onClick={() => onVerFactura?.(gasto)}
-                      className="text-xs text-blue-600 underline hover:text-blue-800"
-                    >
-                      Ver factura
-                    </button>
+                    <button onClick={() => onVerFactura?.(gasto)} className="text-xs text-blue-600 underline hover:text-blue-800">Ver factura</button>
                   ) : (
-                    <button
-                      onClick={() => onAdjuntarFactura?.(gasto)}
-                      className="inline-flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      <Camera size={14} />
-                      Adjuntar
+                    <button onClick={() => onAdjuntarFactura?.(gasto)} className="inline-flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors">
+                      <Camera size={14} /> Adjuntar
                     </button>
                   )}
                 </td>
@@ -66,14 +55,11 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
       <div className="md:hidden space-y-2.5">
         {gastos.map((gasto) => (
           <div key={gasto.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden active:bg-gray-50 transition-colors">
-            {/* Fila principal */}
             <div className="p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 leading-tight truncate">{gasto.descripcion}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(gasto.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1">{formatFechaCorta(gasto.fecha)}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className={`text-sm font-bold ${gasto.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}>
@@ -83,20 +69,13 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
                 </div>
               </div>
             </div>
-            {/* Botón de acción - barra inferior */}
             <div className="border-t border-gray-100 bg-gray-50/50">
               {gasto.facturaId ? (
-                <button
-                  onClick={() => onVerFactura?.(gasto)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-blue-600 font-medium active:bg-blue-50 transition-colors"
-                >
+                <button onClick={() => onVerFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-blue-600 font-medium active:bg-blue-50 transition-colors">
                   <CheckCircle size={16} /> Ver factura adjunta
                 </button>
               ) : (
-                <button
-                  onClick={() => onAdjuntarFactura?.(gasto)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-gray-600 font-medium active:bg-blue-50 transition-colors"
-                >
+                <button onClick={() => onAdjuntarFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-gray-600 font-medium active:bg-blue-50 transition-colors">
                   <Camera size={16} /> Adjuntar factura
                 </button>
               )}
