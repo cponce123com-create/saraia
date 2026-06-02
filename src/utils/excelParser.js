@@ -10,15 +10,20 @@ function parsearFecha(valor) {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  const str = String(valor).trim();
+  let str = String(valor).trim();
+
+  // Extraer solo la parte de fecha (antes de espacio o T)
+  // "30/05/2026 20:50:25" → "30/05/2026"
+  // "2026-05-30T20:50:25" → "2026-05-30"
+  str = str.split(' ')[0].split('T')[0];
 
   // ISO: 2026-05-30
-  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(str)) {
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(str)) {
     const d = new Date(str);
     if (!isNaN(d.getTime())) return d;
   }
 
-  // DD/MM/AAAA o DD-MM-AAAA (formato peruano)
+  // DD/MM/AAAA o DD-MM-AAAA
   const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if (m) {
     let dia = parseInt(m[1]), mes = parseInt(m[2]), anio = parseInt(m[3]);
@@ -27,7 +32,7 @@ function parsearFecha(valor) {
     if (!isNaN(d.getTime()) && d.getDate() === dia && d.getMonth() === mes - 1) return d;
   }
 
-  // Fallback: Date nativo
+  // Fallback
   const d = new Date(str);
   return isNaN(d.getTime()) ? null : d;
 }
