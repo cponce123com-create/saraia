@@ -9,8 +9,7 @@ export function useYapeImport() {
 
   const importar = async (file) => {
     if (!file) return;
-    
-    // Validar extensión
+
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast.error('Solo archivos .xlsx o .xls');
       return;
@@ -18,16 +17,25 @@ export function useYapeImport() {
 
     setImportando(true);
     try {
-      const gastos = await parsearExcelYape(file);
-      
+      const { gastos, resumen } = await parsearExcelYape(file);
+
       if (gastos.length === 0) {
         toast.error('No se encontraron gastos en el archivo');
         return;
       }
 
       importarGastos(gastos);
-      toast.success(`${gastos.length} gastos importados correctamente`);
-      return gastos;
+
+      // Toast más informativo con resumen
+      let msg = `${gastos.length} gastos importados`;
+      if (resumen) {
+        msg += ` (${resumen.leidas} leídas`;
+        if (resumen.saltadas > 0) msg += `, ${resumen.saltadas} saltadas`;
+        msg += ` de ${resumen.totalFilas} filas)`;
+      }
+      toast.success(msg);
+
+      return { gastos, resumen };
     } catch (err) {
       toast.error(err.message);
     } finally {
