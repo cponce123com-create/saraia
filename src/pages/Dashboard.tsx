@@ -5,22 +5,16 @@ export default function Dashboard() {
   const gastos = useGastosStore((s) => s.gastos);
   const facturas = useGastosStore((s) => s.facturas);
 
-  const totalGastos = gastos
-    .filter((g) => g.tipo === 'gasto')
-    .reduce((sum, g) => sum + g.monto, 0);
+  const totalGastos = gastos.filter((g) => g.tipo === 'gasto').reduce((sum, g) => sum + g.monto, 0);
 
-  const totalIngresos = gastos
-    .filter((g) => g.tipo === 'ingreso')
-    .reduce((sum, g) => sum + g.monto, 0);
+  const totalIngresos = gastos.filter((g) => g.tipo === 'ingreso').reduce((sum, g) => sum + g.monto, 0);
 
   const facturasSubidas = facturas.length;
   const pendientes = gastos.filter((g) => g.estado === 'pendiente').length;
   const verificados = gastos.filter((g) => g.estado === 'verificado').length;
   const conflictos = gastos.filter((g) => g.estado === 'conflicto').length;
 
-  const docPercent = gastos.length > 0
-    ? Math.round((verificados / gastos.length) * 100)
-    : 0;
+  const docPercent = gastos.length > 0 ? Math.round((verificados / gastos.length) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -63,9 +57,12 @@ export default function Dashboard() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium text-gray-700">Gastos documentados</p>
-          <p className="text-sm font-bold" style={{
-            color: docPercent < 50 ? '#dc2626' : docPercent < 80 ? '#ca8a04' : '#16a34a'
-          }}>
+          <p
+            className="text-sm font-bold"
+            style={{
+              color: docPercent < 50 ? '#dc2626' : docPercent < 80 ? '#ca8a04' : '#16a34a',
+            }}
+          >
             {docPercent}%
           </p>
         </div>
@@ -74,7 +71,7 @@ export default function Dashboard() {
             className="h-2.5 rounded-full transition-all"
             style={{
               width: `${docPercent}%`,
-              backgroundColor: docPercent < 50 ? '#dc2626' : docPercent < 80 ? '#ca8a04' : '#16a34a'
+              backgroundColor: docPercent < 50 ? '#dc2626' : docPercent < 80 ? '#ca8a04' : '#16a34a',
             }}
           />
         </div>

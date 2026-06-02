@@ -1,16 +1,17 @@
+import type { Gasto, OpcionesMatch, MatchResult, MatchScore } from '../types';
+
 /**
  * Algoritmo de matching entre gasto de YAPE y datos extraídos de factura.
- * 
+ *
  * Reglas:
  * - Fecha: mismo día ±2 días
  * - Monto: diferencia < 5 soles
- * 
- * @param {Object} gasto - { fecha, monto, descripcion }
- * @param {Object} ocrData - { fecha, monto, proveedor }
- * @param {Object} opciones - { toleranciaDias, toleranciaMonto }
- * @returns {number} Score de matching (0-1), 1 = match perfecto
  */
-export function calcularMatch(gasto, ocrData, opciones = {}) {
+export function calcularMatch(
+  gasto: { fecha?: string | null; monto?: number | null; descripcion?: string | null } | null | undefined,
+  ocrData: { fecha?: string | null; monto?: number | null; proveedor?: string | null } | null | undefined,
+  opciones: OpcionesMatch = {},
+): number {
   const { toleranciaDias = 2, toleranciaMonto = 5 } = opciones;
 
   if (!gasto || !ocrData) return 0;
@@ -22,9 +23,7 @@ export function calcularMatch(gasto, ocrData, opciones = {}) {
   // Comparar fecha (peso: 50%)
   if (gasto.fecha && ocrData.fecha) {
     totalPonderado += 0.5;
-    const diffDias = Math.abs(
-      new Date(gasto.fecha) - new Date(ocrData.fecha)
-    ) / (1000 * 60 * 60 * 24);
+    const diffDias = Math.abs(new Date(gasto.fecha).getTime() - new Date(ocrData.fecha).getTime()) / (1000 * 60 * 60 * 24);
 
     if (diffDias <= toleranciaDias) {
       score += 0.5 * (1 - diffDias / (toleranciaDias + 1));
@@ -32,10 +31,10 @@ export function calcularMatch(gasto, ocrData, opciones = {}) {
   }
 
   // Comparar monto (peso: 50%)
-  if (gasto.monto && ocrData.monto) {
+  if (gasto.monto != null && ocrData.monto != null) {
     totalPonderado += 0.5;
     const diffMonto = Math.abs(gasto.monto - ocrData.monto);
-    
+
     if (diffMonto <= toleranciaMonto) {
       score += 0.5 * (1 - diffMonto / (toleranciaMonto + 1));
     }
@@ -49,16 +48,15 @@ export function calcularMatch(gasto, ocrData, opciones = {}) {
 
 /**
  * Encuentra el mejor match para un OCR entre múltiples gastos.
- * 
- * @param {Array} gastos - Lista de gastos pendientes
- * @param {Object} ocrData - Datos extraídos de factura
- * @param {Object} opciones - Opciones de tolerancia
- * @returns {Object} { match: 'unico' | 'multiple' | 'ninguno', gastos: Array, scores: Array }
  */
-export function encontrarMatch(gastos, ocrData, opciones = {}) {
+export function encontrarMatch(
+  gastos: Gasto[],
+  ocrData: { fecha?: string | null; monto?: number | null; proveedor?: string | null },
+  opciones: OpcionesMatch = {},
+): MatchResult {
   const { umbralUnico = 0.6, umbralMinimo = 0.3 } = opciones;
 
-  const resultados = gastos
+  const resultados: MatchScore[] = gastos
     .filter((g) => g.estado !== 'sin_factura' && g.estado !== 'verificado')
     .map((gasto) => ({
       gasto,

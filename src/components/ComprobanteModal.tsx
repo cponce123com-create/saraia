@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
+import type { ComprobanteModalProps } from '../types';
 
-export default function ComprobanteModal({ factura, onClose }) {
+export default function ComprobanteModal({ factura, onClose }: ComprobanteModalProps) {
   if (!factura) return null;
 
   return (
@@ -32,33 +33,56 @@ export default function ComprobanteModal({ factura, onClose }) {
           {factura.ocrData && (
             <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-2">
               {factura.ocrData.proveedor && (
-                <p><span className="text-gray-500">Proveedor:</span> <span className="font-medium">{factura.ocrData.proveedor}</span></p>
+                <p>
+                  <span className="text-gray-500">Proveedor:</span>{' '}
+                  <span className="font-medium">{factura.ocrData.proveedor}</span>
+                </p>
               )}
               {factura.ocrData.fecha && (
-                <p><span className="text-gray-500">Fecha:</span> <span className="font-medium">{factura.ocrData.fecha}</span></p>
+                <p>
+                  <span className="text-gray-500">Fecha:</span>{' '}
+                  <span className="font-medium">{factura.ocrData.fecha}</span>
+                </p>
               )}
-              {factura.ocrData.monto && (
-                <p><span className="text-gray-500">Monto:</span> <span className="font-semibold">S/ {factura.ocrData.monto.toFixed(2)}</span></p>
+              {factura.ocrData.monto != null && (
+                <p>
+                  <span className="text-gray-500">Monto:</span>{' '}
+                  <span className="font-semibold">S/ {factura.ocrData.monto.toFixed(2)}</span>
+                </p>
               )}
               {factura.ocrData.ruc && (
-                <p><span className="text-gray-500">RUC:</span> <span className="font-medium">{factura.ocrData.ruc}</span></p>
+                <p>
+                  <span className="text-gray-500">RUC:</span> <span className="font-medium">{factura.ocrData.ruc}</span>
+                </p>
               )}
               {factura.ocrData.tipo_comprobante && (
-                <p><span className="text-gray-500">Tipo:</span> <span className="font-medium capitalize">{factura.ocrData.tipo_comprobante}</span></p>
+                <p>
+                  <span className="text-gray-500">Tipo:</span>{' '}
+                  <span className="font-medium capitalize">{factura.ocrData.tipo_comprobante}</span>
+                </p>
               )}
               {factura.ocrData.numero_comprobante && (
-                <p><span className="text-gray-500">N°:</span> <span className="font-medium">{factura.ocrData.numero_comprobante}</span></p>
+                <p>
+                  <span className="text-gray-500">N°:</span>{' '}
+                  <span className="font-medium">{factura.ocrData.numero_comprobante}</span>
+                </p>
               )}
               <p>
                 <span className="text-gray-500">Estado:</span>{' '}
-                <span className={`font-medium ${
-                  factura.matchStatus === 'auto' ? 'text-green-600' :
-                  factura.matchStatus === 'conflicto' ? 'text-orange-600' :
-                  'text-yellow-600'
-                }`}>
-                  {factura.matchStatus === 'auto' ? 'Match automático' :
-                   factura.matchStatus === 'conflicto' ? 'Conflicto' :
-                   'Sin match'}
+                <span
+                  className={`font-medium ${
+                    factura.matchStatus === 'auto'
+                      ? 'text-green-600'
+                      : factura.matchStatus === 'conflicto'
+                        ? 'text-orange-600'
+                        : 'text-yellow-600'
+                  }`}
+                >
+                  {factura.matchStatus === 'auto'
+                    ? 'Match automático'
+                    : factura.matchStatus === 'conflicto'
+                      ? 'Conflicto'
+                      : 'Sin match'}
                 </span>
               </p>
             </div>

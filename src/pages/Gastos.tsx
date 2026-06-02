@@ -6,6 +6,7 @@ import GastosLista from '../components/GastosLista';
 import SubirExcel from '../components/SubirExcel';
 import CamaraModal from '../components/CamaraModal';
 import ComprobanteModal from '../components/ComprobanteModal';
+import type { Gasto, Factura } from '../types';
 
 export default function Gastos() {
   const gastos = useGastosStore((s) => s.gastos);
@@ -13,11 +14,11 @@ export default function Gastos() {
   const eliminarGasto = useGastosStore((s) => s.eliminarGasto);
   const limpiarTodo = useGastosStore((s) => s.limpiarTodo);
 
-  const [filtro, setFiltro] = useState('todos');
-  const [busqueda, setBusqueda] = useState('');
-  const [camaraModal, setCamaraModal] = useState(null);
-  const [verFactura, setVerFactura] = useState(null);
-  const [showImport, setShowImport] = useState(gastos.length === 0);
+  const [filtro, setFiltro] = useState<string>('todos');
+  const [busqueda, setBusqueda] = useState<string>('');
+  const [camaraModal, setCamaraModal] = useState<Gasto | null>(null);
+  const [verFactura, setVerFactura] = useState<Factura | null>(null);
+  const [showImport, setShowImport] = useState<boolean>(gastos.length === 0);
 
   const gastosFiltrados = gastos.filter((g) => {
     if (filtro === 'pendientes' && g.estado !== 'pendiente') return false;
@@ -41,7 +42,8 @@ export default function Gastos() {
       {/* Cabecera: título + botones */}
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900">
-          Gastos {gastos.length > 0 && <span className="text-gray-400 font-normal text-sm ml-1">({gastos.length})</span>}
+          Gastos{' '}
+          {gastos.length > 0 && <span className="text-gray-400 font-normal text-sm ml-1">({gastos.length})</span>}
         </h2>
         <div className="flex items-center gap-2">
           {gastos.length > 0 && !showImport && (
@@ -67,7 +69,13 @@ export default function Gastos() {
                 : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
             }`}
           >
-            {showImport ? <>Cancelar</> : <><Upload size={16} /> Importar</>}
+            {showImport ? (
+              <>Cancelar</>
+            ) : (
+              <>
+                <Upload size={16} /> Importar
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -97,9 +105,7 @@ export default function Gastos() {
                 key={t.value}
                 onClick={() => setFiltro(t.value)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                  filtro === t.value
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                  filtro === t.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 {t.label}
@@ -130,12 +136,12 @@ export default function Gastos() {
           {/* Lista de gastos */}
           <GastosLista
             gastos={gastosFiltrados}
-            onAdjuntarFactura={(gasto) => setCamaraModal(gasto)}
-            onVerFactura={(gasto) => {
+            onAdjuntarFactura={(gasto: Gasto) => setCamaraModal(gasto)}
+            onVerFactura={(gasto: Gasto) => {
               const factura = facturas.find((f) => f.id === gasto.facturaId);
               if (factura) setVerFactura(factura);
             }}
-            onEliminar={(id) => {
+            onEliminar={(id: number) => {
               eliminarGasto(id);
               toast.success('Gasto eliminado');
             }}
@@ -148,17 +154,13 @@ export default function Gastos() {
         <div className="text-center py-16 text-gray-400">
           <FileSpreadsheet size={48} className="mx-auto mb-3 opacity-50" />
           <p className="text-base font-medium">No hay gastos cargados</p>
-          <p className="text-sm mt-1">Presiona "Importar YAPE" para subir tu primer reporte</p>
+          <p className="text-sm mt-1">Presiona &quot;Importar YAPE&quot; para subir tu primer reporte</p>
         </div>
       )}
 
       {/* Modales */}
-      {camaraModal && (
-        <CamaraModal gasto={camaraModal} onClose={() => setCamaraModal(null)} />
-      )}
-      {verFactura && (
-        <ComprobanteModal factura={verFactura} onClose={() => setVerFactura(null)} />
-      )}
+      {camaraModal && <CamaraModal gasto={camaraModal} onClose={() => setCamaraModal(null)} />}
+      {verFactura && <ComprobanteModal factura={verFactura} onClose={() => setVerFactura(null)} />}
     </div>
   );
 }

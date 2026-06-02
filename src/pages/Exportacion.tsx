@@ -17,9 +17,14 @@ export default function Exportacion() {
         Descripción: g.descripcion,
         Tipo: g.tipo === 'gasto' ? 'Gasto' : 'Ingreso',
         'Monto (S/)': g.monto,
-        'Estado Factura': g.estado === 'verificado' ? 'Verificado' :
-                          g.estado === 'conflicto' ? 'Conflicto' :
-                          g.estado === 'sin_factura' ? 'Sin factura' : 'Pendiente',
+        'Estado Factura':
+          g.estado === 'verificado'
+            ? 'Verificado'
+            : g.estado === 'conflicto'
+              ? 'Conflicto'
+              : g.estado === 'sin_factura'
+                ? 'Sin factura'
+                : 'Pendiente',
         Proveedor: factura?.ocrData?.proveedor || '',
         'RUC Emisor': factura?.ocrData?.ruc || '',
         'Fecha Factura': factura?.ocrData?.fecha || '',
@@ -31,12 +36,8 @@ export default function Exportacion() {
     });
 
     // Agregar fila de totales
-    const totalGastos = gastos
-      .filter((g) => g.tipo === 'gasto')
-      .reduce((s, g) => s + g.monto, 0);
-    const totalIngresos = gastos
-      .filter((g) => g.tipo === 'ingreso')
-      .reduce((s, g) => s + g.monto, 0);
+    const totalGastos = gastos.filter((g) => g.tipo === 'gasto').reduce((s, g) => s + g.monto, 0);
+    // const totalIngresos = ...; // no usado actualmente
 
     rows.push({
       Fecha: '',
@@ -54,7 +55,7 @@ export default function Exportacion() {
     });
 
     // Resumen por proveedor
-    const resumenProveedor = {};
+    const resumenProveedor: Record<string, { count: number; total: number; verificados: number }> = {};
     gastos.forEach((g) => {
       const factura = facturas.find((f) => f.id === g.facturaId);
       const proveedor = factura?.ocrData?.proveedor || 'Sin proveedor';
@@ -82,16 +83,23 @@ export default function Exportacion() {
 
     // Ancho de columnas
     ws1['!cols'] = [
-      { wch: 12 }, { wch: 35 }, { wch: 10 }, { wch: 12 },
-      { wch: 16 }, { wch: 25 }, { wch: 14 }, { wch: 14 },
-      { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 12 },
+      { wch: 12 },
+      { wch: 35 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 25 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 12 },
     ];
 
     const ws2 = XLSX.utils.json_to_sheet(resumenRows);
     XLSX.utils.book_append_sheet(wb, ws2, 'Resumen por Proveedor');
-    ws2['!cols'] = [
-      { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
-    ];
+    ws2['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
 
     const filename = `SaraIA_${new Date().toISOString().split('T')[0]}.xlsx`;
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -108,9 +116,7 @@ export default function Exportacion() {
     URL.revokeObjectURL(url);
   };
 
-  const totalGastos = gastos
-    .filter((g) => g.tipo === 'gasto')
-    .reduce((s, g) => s + g.monto, 0);
+  const totalGastos = gastos.filter((g) => g.tipo === 'gasto').reduce((s, g) => s + g.monto, 0);
   const verificados = gastos.filter((g) => g.estado === 'verificado').length;
   const conflictos = gastos.filter((g) => g.estado === 'conflicto').length;
   const sinFactura = gastos.filter((g) => g.estado === 'sin_factura').length;
@@ -154,8 +160,8 @@ export default function Exportacion() {
             <strong>El Excel incluirá:</strong>
           </p>
           <ul className="list-disc list-inside mt-1 space-y-1">
-            <li>Hoja "Gastos": lista completa con estado y datos de factura</li>
-            <li>Hoja "Resumen por Proveedor": totales agrupados</li>
+            <li>Hoja &quot;Gastos&quot;: lista completa con estado y datos de factura</li>
+            <li>Hoja &quot;Resumen por Proveedor&quot;: totales agrupados</li>
             <li>Fila de totales al final</li>
           </ul>
         </div>
@@ -163,7 +169,10 @@ export default function Exportacion() {
         {conflictos > 0 && (
           <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 text-sm text-orange-800">
             <AlertTriangle size={18} />
-            <span>{conflictos} gasto{conflictos !== 1 ? 's' : ''} en conflicto. Resuélvelos antes de exportar para un balance más preciso.</span>
+            <span>
+              {conflictos} gasto{conflictos !== 1 ? 's' : ''} en conflicto. Resuélvelos antes de exportar para un
+              balance más preciso.
+            </span>
           </div>
         )}
 
@@ -199,16 +208,23 @@ export default function Exportacion() {
                   <tr key={g.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-600">{g.fecha}</td>
                     <td className="px-3 py-2 font-medium truncate max-w-[200px]">{g.descripcion}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${g.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}>
+                    <td
+                      className={`px-3 py-2 text-right font-semibold ${g.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}
+                    >
                       S/ {g.monto.toFixed(2)}
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        g.estado === 'verificado' ? 'bg-green-100 text-green-700' :
-                        g.estado === 'conflicto' ? 'bg-orange-100 text-orange-700' :
-                        g.estado === 'sin_factura' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          g.estado === 'verificado'
+                            ? 'bg-green-100 text-green-700'
+                            : g.estado === 'conflicto'
+                              ? 'bg-orange-100 text-orange-700'
+                              : g.estado === 'sin_factura'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
                         {g.estado}
                       </span>
                     </td>

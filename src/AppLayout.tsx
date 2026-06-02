@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload } from 'lucide-react';
 import useGastosStore from './store/gastosStore';
 import { useYapeImport } from './hooks/useYapeImport';
+import type { AppLayoutProps } from './types';
 
 const navItems = [
   { path: '/', label: 'Inicio', icon: LayoutDashboard },
@@ -11,7 +12,7 @@ const navItems = [
   { path: '/exportar', label: 'Exportar', icon: Download },
 ];
 
-const pageTitles = {
+const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/gastos': 'Gastos',
   '/escanear': 'Escáner Masivo',
@@ -19,7 +20,7 @@ const pageTitles = {
   '/exportar': 'Exportar Balance',
 };
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const gastos = useGastosStore((s) => s.gastos);
   const conflictos = gastos.filter((g) => g.estado === 'conflicto').length;
@@ -29,8 +30,8 @@ export default function AppLayout({ children }) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.xlsx,.xls';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (file) importar(file);
     };
     input.click();
@@ -55,9 +56,7 @@ export default function AppLayout({ children }) {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
+                  isActive ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
                 }`}
               >
                 <item.icon size={20} />
@@ -105,9 +104,7 @@ export default function AppLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-6">{children}</main>
       </div>
 
       {/* ─── Bottom Nav Móvil ─────────────────────────────────────── */}

@@ -2,12 +2,19 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { parsearExcelYape } from '../utils/excelParser';
 import useGastosStore from '../store/gastosStore';
+import type { ResultadoImportacion, ResultadoParseo, GastoPendiente } from '../types';
 
-export function useYapeImport() {
+interface ImportResult {
+  gastos: GastoPendiente[];
+  resumen: { leidas: number; saltadas: number; totalFilas: number; errores: string[] };
+  resultado: ResultadoImportacion;
+}
+
+export function useYapeImport(): { importar: (file: File) => Promise<ImportResult | undefined>; importando: boolean } {
   const [importando, setImportando] = useState(false);
   const importarGastos = useGastosStore((s) => s.importarGastos);
 
-  const importar = async (file) => {
+  const importar = async (file: File): Promise<ImportResult | undefined> => {
     if (!file) return;
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
@@ -17,7 +24,7 @@ export function useYapeImport() {
 
     setImportando(true);
     try {
-      const { gastos, resumen } = await parsearExcelYape(file);
+      const { gastos, resumen }: ResultadoParseo = await parsearExcelYape(file);
 
       if (gastos.length === 0) {
         if (resumen.errores && resumen.errores.length > 0) {
@@ -28,7 +35,7 @@ export function useYapeImport() {
         return;
       }
 
-      const resultado = importarGastos(gastos);
+      const resultado: ResultadoImportacion = importarGastos(gastos);
 
       // Toast con resumen completo
       let msg = resultado.insertados + ' gastos importados';
@@ -57,7 +64,7 @@ export function useYapeImport() {
 
       return { gastos, resumen, resultado };
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setImportando(false);
     }

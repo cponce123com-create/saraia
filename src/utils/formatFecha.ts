@@ -1,4 +1,4 @@
-export function formatFecha(dateStr) {
+export function formatFecha(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -8,7 +8,7 @@ export function formatFecha(dateStr) {
   return `${dia}/${mes}/${anio}`;
 }
 
-export function formatFechaCorta(dateStr) {
+export function formatFechaCorta(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -17,7 +17,7 @@ export function formatFechaCorta(dateStr) {
   return `${dia}/${mes}`;
 }
 
-export function formatFechaHora(dateStr) {
+export function formatFechaHora(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -29,7 +29,7 @@ export function formatFechaHora(dateStr) {
   return `${dia}/${mes}/${anio} ${hora}:${min}`;
 }
 
-export function soloFecha(dateStr) {
+export function soloFecha(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
   return dateStr.split('T')[0];
 }

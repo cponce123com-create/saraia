@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import type { OCRData } from '../types';
 
 /**
  * Hook para extraer datos de facturas usando DeepSeek-VL2 (visión).
- * 
- * @param {string} apiKey - DeepSeek API Key
  */
-export function useOCR(apiKey) {
+export function useOCR(apiKey: string): { extraerDatos: (imageBase64: string, mimeType?: string) => Promise<OCRData | null>; extrayendo: boolean } {
   const [extrayendo, setExtrayendo] = useState(false);
 
-  const extraerDatos = async (imageBase64, mimeType = 'image/jpeg') => {
+  const extraerDatos = async (imageBase64: string, mimeType: string = 'image/jpeg'): Promise<OCRData | null> => {
     if (!apiKey) {
       toast.error('Configura la API Key de DeepSeek en .env (VITE_DEEPSEEK_API_KEY)');
       return null;
@@ -23,7 +22,7 @@ export function useOCR(apiKey) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: 'deepseek-vl2',
@@ -68,9 +67,9 @@ export function useOCR(apiKey) {
         throw new Error('No se pudo extraer JSON de la respuesta de DeepSeek');
       }
 
-      return JSON.parse(jsonMatch[0]);
+      return JSON.parse(jsonMatch[0]) as OCRData;
     } catch (err) {
-      toast.error(`Error de OCR: ${err.message}`);
+      toast.error(`Error de OCR: ${err instanceof Error ? err.message : String(err)}`);
       return null;
     } finally {
       setExtrayendo(false);

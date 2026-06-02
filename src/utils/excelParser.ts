@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
+import type { GastoPendiente, GastoForma, ResultadoParseo } from '../types';
 
-function parsearFecha(valor) {
+function parsearFecha(valor: unknown): Date | null {
   if (valor === null || valor === undefined || valor === '') return null;
 
   // Serial de Excel
@@ -14,11 +15,15 @@ function parsearFecha(valor) {
 
   // Intentar parsear el string completo (con hora)
   // "30/05/2026 20:50:25"
-  const mDMY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  const mDMY = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
   if (mDMY) {
-    let dia = parseInt(mDMY[1]), mes = parseInt(mDMY[2]), anio = parseInt(mDMY[3]);
+    let dia = parseInt(mDMY[1]),
+      mes = parseInt(mDMY[2]),
+      anio = parseInt(mDMY[3]);
     if (anio < 100) anio += 2000;
-    const hora = parseInt(mDMY[4] || 0), min = parseInt(mDMY[5] || 0), seg = parseInt(mDMY[6] || 0);
+    const hora = parseInt(mDMY[4] || '0'),
+      min = parseInt(mDMY[5] || '0'),
+      seg = parseInt(mDMY[6] || '0');
     const d = new Date(anio, mes - 1, dia, hora, min, seg);
     if (!isNaN(d.getTime()) && d.getDate() === dia && d.getMonth() === mes - 1) return d;
   }
@@ -30,46 +35,73 @@ function parsearFecha(valor) {
   return null;
 }
 
-export async function parsearExcelYape(file) {
+export async function parsearExcelYape(file: File): Promise<ResultadoParseo> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
-        const data = new Uint8Array(e.target.result);
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         // raw: true para obtener valores originales (serial numbers, strings)
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+        const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
 
         let headerRow = -1;
         for (let i = 0; i < Math.min(rows.length, 15); i++) {
           const row = rows[i];
           if (!row || row.length === 0) continue;
-          const rowStr = row.map((c) => String(c || '').toLowerCase().trim()).join(' ');
-          if (rowStr.includes('fecha') && (rowStr.includes('monto') || rowStr.includes('importe')) && (rowStr.includes('descrip') || rowStr.includes('destino') || rowStr.includes('tipo'))) {
-            headerRow = i; break;
+          const rowStr = row
+            .map((c: unknown) =>
+              String(c || '')
+                .toLowerCase()
+                .trim(),
+            )
+            .join(' ');
+          if (
+            rowStr.includes('fecha') &&
+            (rowStr.includes('monto') || rowStr.includes('importe')) &&
+            (rowStr.includes('descrip') || rowStr.includes('destino') || rowStr.includes('tipo'))
+          ) {
+            headerRow = i;
+            break;
           }
         }
         if (headerRow === -1) headerRow = 0;
 
-        const headers = rows[headerRow].map((h) => String(h || '').toLowerCase().trim());
+        const headers: string[] = rows[headerRow].map((h: unknown) =>
+          String(h || '')
+            .toLowerCase()
+            .trim(),
+        );
         const idxFecha = headers.findIndex((h) => h.includes('fecha'));
-        const idxDesc = headers.findIndex((h) => h.includes('destino') || h.includes('descrip') || h.includes('concepto') || h.includes('detalle') || h.includes('comercio') || h.includes('proveedor') || h.includes('beneficiario'));
+        const idxDesc = headers.findIndex(
+          (h) =>
+            h.includes('destino') ||
+            h.includes('descrip') ||
+            h.includes('concepto') ||
+            h.includes('detalle') ||
+            h.includes('comercio') ||
+            h.includes('proveedor') ||
+            h.includes('beneficiario'),
+        );
         const idxMonto = headers.findIndex((h) => h.includes('monto') || h.includes('importe') || h.includes('cargo'));
         const idxSaldo = headers.findIndex((h) => h.includes('saldo'));
         const idxTipo = headers.findIndex((h) => h.includes('tipo') || h.includes('transacción'));
         const idxOrigen = headers.findIndex((h) => h.includes('origen'));
-        const idxMensaje = headers.findIndex((h) => h.includes('mensaje') || h.includes('referencia') || h.includes('glosa'));
+        const idxMensaje = headers.findIndex(
+          (h) => h.includes('mensaje') || h.includes('referencia') || h.includes('glosa'),
+        );
 
         if (idxFecha === -1 || idxDesc === -1 || idxMonto === -1) {
           reject(new Error('Columnas requeridas no encontradas. Detectadas: ' + headers.join(', ')));
           return;
         }
 
-        const gastos = [];
-        let leidas = 0, saltadas = 0;
-        const errores = [];
+        const gastos: GastoPendiente[] = [];
+        let leidas = 0,
+          saltadas = 0;
+        const errores: string[] = [];
 
         for (let i = headerRow + 1; i < rows.length; i++) {
           const row = rows[i];
@@ -82,26 +114,34 @@ export async function parsearExcelYape(file) {
           const montoRaw = row[idxMonto];
 
           if (!fechaRaw || montoRaw === undefined || montoRaw === null) {
-            saltadas++; continue;
+            saltadas++;
+            continue;
           }
 
           const fecha = parsearFecha(fechaRaw);
           if (!fecha) {
             errores.push(`Fila ${i + 1}: fecha no parseable "${fechaRaw}"`);
-            saltadas++; continue;
+            saltadas++;
+            continue;
           }
 
-          let monto = parseFloat(String(montoRaw).replace(/[^0-9.,\-]/g, '').replace(',', '.'));
+          let monto = parseFloat(
+            String(montoRaw)
+              .replace(/[^0-9.,-]/g, '')
+              .replace(',', '.'),
+          );
           if (isNaN(monto)) {
             errores.push(`Fila ${i + 1}: monto inválido "${montoRaw}"`);
-            saltadas++; continue;
+            saltadas++;
+            continue;
           }
 
           const montoAbs = Math.abs(monto);
-          let tipo = 'gasto';
+          let tipo: GastoForma = 'gasto';
           if (idxTipo !== -1) {
             const t = String(row[idxTipo] || '').toUpperCase();
-            if (t.includes('TE_PAGO') || t.includes('INGRESO') || t.includes('ABONO') || t.includes('RECIBIDO')) tipo = 'ingreso';
+            if (t.includes('TE_PAGO') || t.includes('INGRESO') || t.includes('ABONO') || t.includes('RECIBIDO'))
+              tipo = 'ingreso';
             else tipo = 'gasto';
           } else if (monto < 0) {
             tipo = 'gasto';
@@ -115,7 +155,14 @@ export async function parsearExcelYape(file) {
             monto: montoAbs,
             tipo,
             mensaje: idxMensaje !== -1 ? String(row[idxMensaje] || '').trim() || null : null,
-            saldo: idxSaldo !== -1 ? parseFloat(String(row[idxSaldo] || '0').replace(/[^0-9.,\-]/g, '').replace(',', '.')) || 0 : 0,
+            saldo:
+              idxSaldo !== -1
+                ? parseFloat(
+                    String(row[idxSaldo] || '0')
+                      .replace(/[^0-9.,-]/g, '')
+                      .replace(',', '.'),
+                  ) || 0
+                : 0,
           });
           leidas++;
         }
@@ -125,7 +172,7 @@ export async function parsearExcelYape(file) {
 
         resolve({ gastos, resumen: { leidas, saltadas, totalFilas: rows.length - headerRow - 1, errores } });
       } catch (err) {
-        reject(new Error('Error al leer el archivo: ' + err.message));
+        reject(new Error('Error al leer el archivo: ' + (err instanceof Error ? err.message : String(err))));
       }
     };
     reader.onerror = () => reject(new Error('Error al leer el archivo'));
