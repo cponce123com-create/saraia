@@ -35,6 +35,72 @@ function parsearFecha(valor: unknown): Date | null {
   return null;
 }
 
+/**
+ * Normaliza un valor de monto desde formato de Excel.
+ * Maneja separadores de miles en formato inglés (1,234.56) y español (1.234,56).
+ *
+ * Heurísticas:
+ * - Si hay punto Y coma: el ULTIMO separador es el decimal
+ * - Si solo hay comas: se eliminan (formato inglés, separador de miles)
+ * - Si solo hay puntos: si el último grupo tiene 2 dígitos → decimal; else → miles
+ */
+export function normalizarMonto(valor: unknown): number {
+  if (valor === null || valor === undefined) return NaN;
+  if (typeof valor === 'number') return valor;
+
+  let str = String(valor).replace(/[^0-9.,-]/g, '').trim();
+  if (!str) return NaN;
+
+  const soloDigitos = str.replace(/[.,]/g, '');
+  if (!soloDigitos) return NaN;
+
+  const tienePunto = str.includes('.');
+  const tieneComa = str.includes(',');
+  const ultimoPunto = str.lastIndexOf('.');
+  const ultimaComa = str.lastIndexOf(',');
+
+  if (!tienePunto && !tieneComa) {
+    // Sin separadores → entero
+    return parseInt(str, 10);
+  }
+
+  if (tienePunto && tieneComa) {
+    // Hay ambos → el último es el decimal
+    if (ultimoPunto > ultimaComa) {
+      // Inglés: 1,234.56 → punto decimal, comas miles
+      str = str.replace(/,/g, '');
+    } else {
+      // Español: 1.234,56 → coma decimal, puntos miles
+      str = str.replace(/\./g, '');
+      str = str.replace(',', '.');
+    }
+    return parseFloat(str);
+  }
+
+  if (tieneComa && !tienePunto) {
+    // Solo comas → formato inglés (comas = miles): 1,200 → 1200
+    str = str.replace(/,/g, '');
+    return parseFloat(str);
+  }
+
+  // Solo puntos → determinar si es decimal o miles
+  // 75.50 → 2 dígitos después del punto → decimal
+  // 1.200 → 3 dígitos después del punto → miles (español)
+  if (tienePunto && !tieneComa) {
+    const despuesDelPunto = str.slice(ultimoPunto + 1);
+    if (despuesDelPunto.length === 2) {
+      // Decimal inglés: 75.50 → 75.5
+      return parseFloat(str);
+    } else {
+      // Miles español: 1.200 → quitar puntos → 1200
+      str = str.replace(/\./g, '');
+      return parseFloat(str);
+    }
+  }
+
+  return NaN;
+}
+
 export async function parsearExcelYape(file: File): Promise<ResultadoParseo> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -125,11 +191,7 @@ export async function parsearExcelYape(file: File): Promise<ResultadoParseo> {
             continue;
           }
 
-          let monto = parseFloat(
-            String(montoRaw)
-              .replace(/[^0-9.,-]/g, '')
-              .replace(',', '.'),
-          );
+          let monto = normalizarMonto(montoRaw);
           if (isNaN(monto)) {
             errores.push(`Fila ${i + 1}: monto inválido "${montoRaw}"`);
             saltadas++;
@@ -155,14 +217,7 @@ export async function parsearExcelYape(file: File): Promise<ResultadoParseo> {
             monto: montoAbs,
             tipo,
             mensaje: idxMensaje !== -1 ? String(row[idxMensaje] || '').trim() || null : null,
-            saldo:
-              idxSaldo !== -1
-                ? parseFloat(
-                    String(row[idxSaldo] || '0')
-                      .replace(/[^0-9.,-]/g, '')
-                      .replace(',', '.'),
-                  ) || 0
-                : 0,
+            saldo: idxSaldo !== -1 ? normalizarMonto(row[idxSaldo]) || 0 : 0,
           });
           leidas++;
         }
