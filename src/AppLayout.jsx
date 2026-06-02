@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ArrowRightLeft, AlertTriangle, Download, Upload } from 'lucide-react';
+import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload } from 'lucide-react';
 import useGastosStore from './store/gastosStore';
 import { useYapeImport } from './hooks/useYapeImport';
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/', label: 'Inicio', icon: LayoutDashboard },
   { path: '/gastos', label: 'Gastos', icon: ArrowRightLeft },
+  { path: '/escanear', label: 'Escanear', icon: Camera },
   { path: '/resolver', label: 'Resolver', icon: AlertTriangle },
   { path: '/exportar', label: 'Exportar', icon: Download },
 ];
