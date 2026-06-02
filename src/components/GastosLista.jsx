@@ -1,7 +1,7 @@
-import { Camera, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, AlertTriangle, XCircle, Trash2 } from 'lucide-react';
 import { formatFecha, formatFechaCorta } from '../utils/formatFecha';
 
-export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura }) {
+export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura, onEliminar }) {
   if (!gastos || gastos.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -69,14 +69,21 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura })
                 </div>
               </div>
             </div>
-            <div className="border-t border-gray-100 bg-gray-50/50">
-              {gasto.facturaId ? (
-                <button onClick={() => onVerFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-blue-600 font-medium active:bg-blue-50 transition-colors">
-                  <CheckCircle size={16} /> Ver factura adjunta
-                </button>
-              ) : (
-                <button onClick={() => onAdjuntarFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-gray-600 font-medium active:bg-blue-50 transition-colors">
-                  <Camera size={16} /> Adjuntar factura
+            <div className="border-t border-gray-100 bg-gray-50/50 flex">
+              <div className="flex-1">
+                {gasto.facturaId ? (
+                  <button onClick={() => onVerFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-blue-600 font-medium active:bg-blue-50 transition-colors">
+                    <CheckCircle size={16} /> Ver factura
+                  </button>
+                ) : (
+                  <button onClick={() => onAdjuntarFactura?.(gasto)} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-gray-600 font-medium active:bg-blue-50 transition-colors">
+                    <Camera size={16} /> Adjuntar
+                  </button>
+                )}
+              </div>
+              {onEliminar && (
+                <button onClick={() => onEliminar(gasto.id)} className="px-3 flex items-center text-gray-400 hover:text-red-500 active:text-red-600 transition-colors border-l border-gray-100" title="Eliminar">
+                  <Trash2 size={16} />
                 </button>
               )}
             </div>

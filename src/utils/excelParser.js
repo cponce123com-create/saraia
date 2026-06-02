@@ -104,6 +104,11 @@ export async function parsearExcelYape(file) {
           if (idxTipo !== -1) {
             const t = String(row[idxTipo] || '').toUpperCase();
             if (t.includes('TE_PAGO') || t.includes('INGRESO') || t.includes('ABONO') || t.includes('RECIBIDO')) tipo = 'ingreso';
+            else tipo = 'gasto';
+          } else if (monto < 0) {
+            tipo = 'gasto';
+          } else {
+            tipo = 'ingreso';
           }
 
           gastos.push({

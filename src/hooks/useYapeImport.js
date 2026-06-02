@@ -19,11 +19,6 @@ export function useYapeImport() {
     try {
       const { gastos, resumen } = await parsearExcelYape(file);
 
-      console.log('Excel parseado:', resumen);
-      if (resumen.errores && resumen.errores.length > 0) {
-        console.warn('Errores de parseo:', resumen.errores);
-      }
-
       if (gastos.length === 0) {
         if (resumen.errores && resumen.errores.length > 0) {
           toast.error('Error: ' + resumen.errores[0]);
@@ -33,15 +28,24 @@ export function useYapeImport() {
         return;
       }
 
-      importarGastos(gastos);
+      const resultado = importarGastos(gastos);
 
-      let msg = gastos.length + ' gastos importados';
+      // Toast con resumen completo
+      let msg = resultado.insertados + ' gastos importados';
       if (resumen) {
         msg += ' (' + resumen.leidas + ' leidas';
         if (resumen.saltadas > 0) msg += ', ' + resumen.saltadas + ' saltadas';
-        msg += ' de ' + resumen.totalFilas + ' filas)';
+        msg += ')';
       }
       toast.success(msg);
+
+      if (resultado.duplicados > 0) {
+        toast(resultado.duplicados + ' duplicados ignorados (ya existian)', {
+          icon: 'i',
+          duration: 4000,
+          style: { background: '#e0f2fe', color: '#075985' },
+        });
+      }
 
       if (resumen.errores && resumen.errores.length > 0) {
         toast(resumen.errores.slice(0, 3).join(' | '), {
@@ -51,7 +55,7 @@ export function useYapeImport() {
         });
       }
 
-      return { gastos, resumen };
+      return { gastos, resumen, resultado };
     } catch (err) {
       toast.error(err.message);
     } finally {

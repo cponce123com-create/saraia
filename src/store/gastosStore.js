@@ -1,7 +1,5 @@
-// Store global con Zustand + persistencia localStorage
 import { create } from 'zustand';
 
-// Claves para localStorage
 const STORAGE_KEY = 'saraia-data';
 
 function loadState() {
@@ -9,7 +7,7 @@ function loadState() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
-  return { gastos: [], facturas: [], proximoId: 1 };
+  return { gastos: [], facturas: [], proximoId: 1, importaciones: [] };
 }
 
 function saveState(state) {
@@ -18,6 +16,7 @@ function saveState(state) {
       gastos: state.gastos,
       facturas: state.facturas,
       proximoId: state.proximoId,
+      importaciones: state.importaciones,
     }));
   } catch {}
 }
@@ -29,27 +28,71 @@ const useGastosStore = create((set, get) => {
     gastos: initial.gastos,
     facturas: initial.facturas,
     proximoId: initial.proximoId,
+    importaciones: initial.importaciones || [],
 
-    // ─── Importar gastos desde Excel Yape ────────────────────────────
     importarGastos: (nuevosGastos) => {
       const state = get();
       let { proximoId } = state;
+      const existentes = state.gastos;
+      const insertados = [];
+      const duplicados = [];
 
-      const gastosConId = nuevosGastos.map((g) => ({
-        ...g,
+      for (const g of nuevosGastos) {
+        // Detectar duplicado por (fecha + monto + descripcion)
+        const dup = existentes.find(
+          (e) => e.fecha === g.fecha && e.monto === g.monto && e.descripcion === g.descripcion
+        );
+        if (dup) {
+          duplicados.push(g);
+          continue;
+        }
+
+        insertados.push({
+          ...g,
+          id: proximoId++,
+          facturaId: null,
+          estado: 'pendiente',
+        });
+      }
+
+      if (insertados.length === 0) {
+        return { insertados: 0, duplicados: duplicados.length };
+      }
+
+      // Registrar la importación
+      const importacion = {
         id: proximoId++,
-        facturaId: null,
-        estado: 'pendiente', // pendiente | verificado | conflicto | sin_factura
-      }));
+        fecha: new Date().toISOString(),
+        cantidad: insertados.length,
+        duplicados: duplicados.length,
+      };
 
       set((s) => ({
-        gastos: [...gastosConId, ...s.gastos],
+        gastos: [...insertados, ...s.gastos],
+        importaciones: [importacion, ...(s.importaciones || [])],
         proximoId,
+      }));
+      saveState(get());
+
+      return { insertados: insertados.length, duplicados: duplicados.length };
+    },
+
+    eliminarGasto: (gastoId) => {
+      const state = get();
+      const gasto = state.gastos.find((g) => g.id === gastoId);
+      // Eliminar factura asociada
+      const facturaId = gasto?.facturaId;
+      set((s) => ({
+        gastos: s.gastos.filter((g) => g.id !== gastoId),
+        facturas: facturaId ? s.facturas.filter((f) => f.id !== facturaId) : s.facturas,
       }));
       saveState(get());
     },
 
-    // ─── Adjuntar factura a un gasto ─────────────────────────────────
+    eliminarImportacion: (importacionId) => {
+      // No implementado por ahora - requiere tracking de qué IDs pertenecen a cada importación
+    },
+
     adjuntarFactura: (gastoId, factura) => {
       const state = get();
       const facturaConId = { ...factura, id: state.proximoId, gastoId };
@@ -58,48 +101,36 @@ const useGastosStore = create((set, get) => {
       set((s) => ({
         facturas: [...s.facturas, facturaConId],
         gastos: s.gastos.map((g) =>
-          g.id === gastoId
-            ? { ...g, facturaId: facturaConId.id, estado: 'pendiente' }
-            : g
+          g.id === gastoId ? { ...g, facturaId: facturaConId.id, estado: 'pendiente' } : g
         ),
         proximoId: nuevoProximoId,
       }));
       saveState(get());
     },
 
-    // ─── Actualizar estado de un gasto ───────────────────────────────
     actualizarEstado: (gastoId, estado) => {
       set((s) => ({
-        gastos: s.gastos.map((g) =>
-          g.id === gastoId ? { ...g, estado } : g
-        ),
+        gastos: s.gastos.map((g) => (g.id === gastoId ? { ...g, estado } : g)),
       }));
       saveState(get());
     },
 
-    // ─── Asignar factura manualmente (resolución de conflictos) ──────
     asignarFactura: (facturaId, gastoId) => {
       set((s) => ({
-        facturas: s.facturas.map((f) =>
-          f.id === facturaId ? { ...f, gastoId } : f
-        ),
+        facturas: s.facturas.map((f) => (f.id === facturaId ? { ...f, gastoId } : f)),
         gastos: s.gastos.map((g) =>
-          g.id === gastoId
-            ? { ...g, facturaId, estado: 'verificado' }
-            : g
+          g.id === gastoId ? { ...g, facturaId, estado: 'verificado' } : g
         ),
       }));
       saveState(get());
     },
 
-    // ─── Obtener factura de un gasto ─────────────────────────────────
     getFactura: (gastoId) => {
       return get().facturas.find((f) => f.gastoId === gastoId) || null;
     },
 
-    // ─── Limpiar todos los datos ─────────────────────────────────────
     limpiarTodo: () => {
-      set({ gastos: [], facturas: [], proximoId: 1 });
+      set({ gastos: [], facturas: [], proximoId: 1, importaciones: [] });
       localStorage.removeItem(STORAGE_KEY);
     },
   };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, X, Upload, FileSpreadsheet } from 'lucide-react';
+import { Search, X, Upload, FileSpreadsheet, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import useGastosStore from '../store/gastosStore';
 import GastosLista from '../components/GastosLista';
 import SubirExcel from '../components/SubirExcel';
@@ -9,6 +10,8 @@ import ComprobanteModal from '../components/ComprobanteModal';
 export default function Gastos() {
   const gastos = useGastosStore((s) => s.gastos);
   const facturas = useGastosStore((s) => s.facturas);
+  const eliminarGasto = useGastosStore((s) => s.eliminarGasto);
+  const limpiarTodo = useGastosStore((s) => s.limpiarTodo);
 
   const [filtro, setFiltro] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -35,25 +38,38 @@ export default function Gastos() {
 
   return (
     <div className="space-y-4">
-      {/* Cabecera: título + botón importar siempre visible */}
-      <div className="flex items-center justify-between">
+      {/* Cabecera: título + botones */}
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900">
           Gastos {gastos.length > 0 && <span className="text-gray-400 font-normal text-sm ml-1">({gastos.length})</span>}
         </h2>
-        <button
-          onClick={() => setShowImport(!showImport)}
-          className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl transition-all ${
-            showImport
-              ? 'bg-gray-100 text-gray-600'
-              : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
-          }`}
-        >
-          {showImport ? (
-            <>Cancelar</>
-          ) : (
-            <><Upload size={16} /> Importar YAPE</>
+        <div className="flex items-center gap-2">
+          {gastos.length > 0 && !showImport && (
+            <button
+              onClick={() => {
+                if (window.confirm('Eliminar TODOS los gastos y facturas?')) {
+                  limpiarTodo();
+                  toast.success('Datos eliminados');
+                }
+              }}
+              className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 px-2.5 py-2 rounded-xl hover:bg-red-50 transition-colors"
+              title="Limpiar todos los datos"
+            >
+              <Trash2 size={16} />
+              <span className="hidden sm:inline">Limpiar</span>
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => setShowImport(!showImport)}
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl transition-all ${
+              showImport
+                ? 'bg-gray-100 text-gray-600'
+                : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
+            }`}
+          >
+            {showImport ? <>Cancelar</> : <><Upload size={16} /> Importar</>}
+          </button>
+        </div>
       </div>
 
       {/* Subir Excel (colapsable, siempre accesible) */}
@@ -118,6 +134,10 @@ export default function Gastos() {
             onVerFactura={(gasto) => {
               const factura = facturas.find((f) => f.id === gasto.facturaId);
               if (factura) setVerFactura(factura);
+            }}
+            onEliminar={(id) => {
+              eliminarGasto(id);
+              toast.success('Gasto eliminado');
             }}
           />
         </>
