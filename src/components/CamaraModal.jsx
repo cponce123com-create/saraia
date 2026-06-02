@@ -5,7 +5,7 @@ import { useOCR } from '../hooks/useOCR';
 import { encontrarMatch } from '../utils/matchingAlgorithm';
 import { calcularMatch } from '../utils/matchingAlgorithm';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
 export default function CamaraModal({ gasto, onClose }) {
   const [imageBase64, setImageBase64] = useState(null);
@@ -14,7 +14,7 @@ export default function CamaraModal({ gasto, onClose }) {
   const [matchResult, setMatchResult] = useState(null);
   const cameraRef = useRef(null);
   const galleryRef = useRef(null);
-  const { extraerDatos, extrayendo } = useOCR(GEMINI_API_KEY);
+  const { extraerDatos, extrayendo } = useOCR(DEEPSEEK_API_KEY);
   const { adjuntarFactura, gastos, actualizarEstado } = useGastosStore();
 
   const handleFile = (file) => {

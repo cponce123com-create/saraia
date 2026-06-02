@@ -4,17 +4,17 @@ import useGastosStore from '../store/gastosStore';
 import { useOCR } from '../hooks/useOCR';
 import { encontrarMatch } from '../utils/matchingAlgorithm';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
 export default function Escanear() {
-  const [images, setImages] = useState([]);          // [{ id, file, preview, mime, base64 }]
+  const [images, setImages] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [results, setResults] = useState(null);       // [{ imagen, ocr, match, ... }]
+  const [results, setResults] = useState(null);
   const [verImagen, setVerImagen] = useState(null);
 
   const cameraRef = useRef(null);
   const galleryRef = useRef(null);
-  const { extraerDatos, extrayendo } = useOCR(GEMINI_API_KEY);
+  const { extraerDatos, extrayendo } = useOCR(DEEPSEEK_API_KEY);
   const {
     gastos,
     adjuntarFactura,
