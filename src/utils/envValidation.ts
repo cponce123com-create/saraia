@@ -1,28 +1,28 @@
-import { z } from 'zod';
-
-const envSchema = z.object({
-  VITE_DEEPSEEK_API_KEY: z
-    .string()
-    .min(1, 'La clave de DeepSeek API es requerida')
-    .startsWith('sk-', 'La clave debe empezar con sk-'),
-});
-
 let validated = false;
 
-export function validateEnv(): { success: boolean; data?: Record<string, unknown>; errors?: z.ZodIssue[] } {
-  if (validated) return { success: true, data: {} };
+export function validateEnv(): { success: boolean; warnings?: string[] } {
+  if (validated) return { success: true };
 
-  const parsed = envSchema.safeParse({
-    VITE_DEEPSEEK_API_KEY: import.meta.env.VITE_DEEPSEEK_API_KEY,
-  });
+  const warnings: string[] = [];
 
-  if (!parsed.success) {
-    const errors = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
-    console.warn('[SaraIA] \u26a0\ufe0f Variables de entorno inv\u00e1lidas:\n' + errors.join('\n'));
-    console.warn('[SaraIA] \u26a0\ufe0f Copia .env.example a .env y configura las variables faltantes.');
-    return { success: false, errors: parsed.error.issues };
+  if (!import.meta.env.VITE_DEEPSEEK_API_KEY) {
+    warnings.push(
+      'VITE_DEEPSEEK_API_KEY no configurada. El OCR usara el proxy serverless (/api/ocr). ' +
+        'Configura DEEPSEEK_API_KEY en el servidor de produccion (Vercel/Netlify).',
+    );
+  }
+
+  if (import.meta.env.VITE_DEEPSEEK_API_KEY) {
+    warnings.push(
+      'VITE_DEEPSEEK_API_KEY esta visible en el frontend. ' +
+        'Esto es inseguro en produccion. Usa el proxy serverless (/api/ocr) con DEEPSEEK_API_KEY en el servidor.',
+    );
+  }
+
+  if (warnings.length > 0) {
+    console.warn('[SaraIA] ' + warnings.join(' | '));
   }
 
   validated = true;
-  return { success: true, data: parsed.data as Record<string, unknown> };
+  return { success: true, warnings };
 }

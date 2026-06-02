@@ -5,8 +5,6 @@ import useGastosStore from '../store/gastosStore';
 import { encontrarMatch } from '../utils/matchingAlgorithm';
 import type { OCRData, MatchResult, Gasto } from '../types';
 
-const API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
-
 interface ImageEntry {
   id: number;
   file: File;
@@ -69,51 +67,25 @@ export default function Escanear() {
       let ocrData: OCRData | null = null;
       let errorMsg: string | null = null;
 
-      if (API_KEY) {
-        try {
-          const dataUri = 'data:' + img.mime + ';base64,' + b64;
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000);
-          const response = await fetch('https://api.deepseek.com/chat/completions', {
-            signal: controller.signal,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + API_KEY },
-            body: JSON.stringify({
-              model: 'deepseek-chat',
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    {
-                      type: 'text',
-                      text: 'Extract invoice data from this image. Return ONLY JSON: {"fecha":"YYYY-MM-DD"|null,"monto":number|null,"proveedor":string|null,"ruc":string|null}',
-                    },
-                    { type: 'image_url', image_url: { url: dataUri } },
-                  ],
-                },
-              ],
-              max_tokens: 500,
-            }),
-          });
-          clearTimeout(timeout);
-          if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error ? err.error.message : 'HTTP ' + response.status);
-          }
-          const data = await response.json();
-          const text = data.choices?.[0]?.message?.content || '';
-          const jsonMatch = text.match(/{[\s\S]*}/);
-          if (jsonMatch) ocrData = JSON.parse(jsonMatch[0]) as OCRData;
-        } catch (err) {
-          errorMsg = err instanceof Error ? err.message : String(err);
-          if (err instanceof TypeError && err.message.includes('fetch')) {
-            errorMsg = 'DeepSeek bloqueado por CORS. Ingresa los datos manualmente.';
-          }
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const response = await fetch('/api/ocr', {
+          signal: controller.signal,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: b64, mimeType: img.mime }),
+        });
+        clearTimeout(timeout);
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || `Error HTTP ${response.status}`);
+        ocrData = body;
+      } catch (err) {
+        errorMsg = err instanceof Error ? err.message : String(err);
+        if (err instanceof TypeError && err.message.includes('fetch')) {
+          errorMsg = 'Proxy no disponible. Ingresa los datos manualmente.';
         }
-      } else {
-        errorMsg = 'API Key no configurada';
       }
-
       let status = 'sin_match';
       let gastoAsignado: Gasto | null = null;
       let matchResult: MatchResult | null = null;
@@ -199,12 +171,9 @@ export default function Escanear() {
         <p className="text-blue-100 text-sm mt-1">Toma o sube fotos. Si la IA falla, ingresa los datos manualmente.</p>
       </div>
 
-      {!API_KEY && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
-          <strong>API Key no configurada.</strong> Las facturas se procesaran en modo manual. Para activar OCR, agrega
-          VITE_DEEPSEEK_API_KEY en Render.
-        </div>
-      )}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+        <strong>OCR autom&aacute;tico.</strong> Las facturas se procesan con IA a trav&eacute;s del proxy seguro. Si la IA falla, puedes ingresar los datos manualmente.
+      </div>
 
       {!results ? (
         <>

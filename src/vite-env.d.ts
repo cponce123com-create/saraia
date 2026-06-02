@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
+
 interface ImportMetaEnv {
-  readonly VITE_DEEPSEEK_API_KEY: string;
+  // Ya no se usa VITE_DEEPSEEK_API_KEY en el frontend.
+  // La API key se configura como DEEPSEEK_API_KEY en el servidor.
 }
+
 declare module '*.css';
 declare module '*.svg';
 declare module '*.png';

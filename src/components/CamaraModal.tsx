@@ -6,8 +6,6 @@ import { encontrarMatch } from '../utils/matchingAlgorithm';
 import { formatFecha } from '../utils/formatFecha';
 import type { OCRData, MatchResult, CamaraModalProps } from '../types';
 
-const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
-
 export default function CamaraModal({ gasto, onClose }: CamaraModalProps) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMime, setImageMime] = useState<string>('image/jpeg');
@@ -15,7 +13,7 @@ export default function CamaraModal({ gasto, onClose }: CamaraModalProps) {
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const { extraerDatos, extrayendo } = useOCR(DEEPSEEK_API_KEY);
+  const { extraerDatos, extrayendo } = useOCR();
   const { adjuntarFactura, gastos, actualizarEstado } = useGastosStore();
 
   const handleFile = (file: File) => {
