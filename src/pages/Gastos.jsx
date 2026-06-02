@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, X, Filter } from 'lucide-react';
+import { Search, X, Upload, FileSpreadsheet } from 'lucide-react';
 import useGastosStore from '../store/gastosStore';
 import GastosLista from '../components/GastosLista';
 import SubirExcel from '../components/SubirExcel';
@@ -14,6 +14,7 @@ export default function Gastos() {
   const [busqueda, setBusqueda] = useState('');
   const [camaraModal, setCamaraModal] = useState(null);
   const [verFactura, setVerFactura] = useState(null);
+  const [showImport, setShowImport] = useState(gastos.length === 0);
 
   const gastosFiltrados = gastos.filter((g) => {
     if (filtro === 'pendientes' && g.estado !== 'pendiente') return false;
@@ -34,11 +35,44 @@ export default function Gastos() {
 
   return (
     <div className="space-y-4">
-      {/* Subir Excel (solo visible si no hay gastos) */}
-      {gastos.length === 0 && <SubirExcel />}
+      {/* Cabecera: título + botón importar siempre visible */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Gastos {gastos.length > 0 && <span className="text-gray-400 font-normal text-sm ml-1">({gastos.length})</span>}
+        </h2>
+        <button
+          onClick={() => setShowImport(!showImport)}
+          className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl transition-all ${
+            showImport
+              ? 'bg-gray-100 text-gray-600'
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
+          }`}
+        >
+          {showImport ? (
+            <>Cancelar</>
+          ) : (
+            <><Upload size={16} /> Importar YAPE</>
+          )}
+        </button>
+      </div>
 
-      {/* Filtros */}
-      {gastos.length > 0 && (
+      {/* Subir Excel (colapsable, siempre accesible) */}
+      {showImport && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <SubirExcel />
+          {gastos.length > 0 && (
+            <button
+              onClick={() => setShowImport(false)}
+              className="w-full mt-2 text-center text-sm text-gray-400 hover:text-gray-600 py-1"
+            >
+              ← Ver mis gastos
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Filtros y lista (solo si hay gastos) */}
+      {gastos.length > 0 && !showImport && (
         <>
           {/* Tabs de filtro */}
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
@@ -89,20 +123,21 @@ export default function Gastos() {
         </>
       )}
 
-      {/* Modal de cámara */}
-      {camaraModal && (
-        <CamaraModal
-          gasto={camaraModal}
-          onClose={() => setCamaraModal(null)}
-        />
+      {/* Estado vacío */}
+      {gastos.length === 0 && !showImport && (
+        <div className="text-center py-16 text-gray-400">
+          <FileSpreadsheet size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="text-base font-medium">No hay gastos cargados</p>
+          <p className="text-sm mt-1">Presiona "Importar YAPE" para subir tu primer reporte</p>
+        </div>
       )}
 
-      {/* Modal ver factura */}
+      {/* Modales */}
+      {camaraModal && (
+        <CamaraModal gasto={camaraModal} onClose={() => setCamaraModal(null)} />
+      )}
       {verFactura && (
-        <ComprobanteModal
-          factura={verFactura}
-          onClose={() => setVerFactura(null)}
-        />
+        <ComprobanteModal factura={verFactura} onClose={() => setVerFactura(null)} />
       )}
     </div>
   );
