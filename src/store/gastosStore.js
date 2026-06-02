@@ -40,7 +40,7 @@ const useGastosStore = create((set, get) => {
       for (const g of nuevosGastos) {
         // Detectar duplicado por (fecha + monto + descripcion)
         const dup = existentes.find(
-          (e) => e.fecha === g.fecha && e.monto === g.monto && e.descripcion === g.descripcion
+          (e) => e.fecha.split('T')[0] === g.fecha.split('T')[0] && e.monto === g.monto && e.descripcion === g.descripcion
         );
         if (dup) {
           duplicados.push(g);

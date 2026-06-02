@@ -12,29 +12,22 @@ function parsearFecha(valor) {
 
   let str = String(valor).trim();
 
-  // Extraer solo la parte de fecha (antes de espacio o T)
-  // "30/05/2026 20:50:25" → "30/05/2026"
-  // "2026-05-30T20:50:25" → "2026-05-30"
-  str = str.split(' ')[0].split('T')[0];
-
-  // ISO: 2026-05-30
-  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(str)) {
-    const d = new Date(str);
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  // DD/MM/AAAA o DD-MM-AAAA
-  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-  if (m) {
-    let dia = parseInt(m[1]), mes = parseInt(m[2]), anio = parseInt(m[3]);
+  // Intentar parsear el string completo (con hora)
+  // "30/05/2026 20:50:25"
+  const mDMY = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (mDMY) {
+    let dia = parseInt(mDMY[1]), mes = parseInt(mDMY[2]), anio = parseInt(mDMY[3]);
     if (anio < 100) anio += 2000;
-    const d = new Date(anio, mes - 1, dia);
+    const hora = parseInt(mDMY[4] || 0), min = parseInt(mDMY[5] || 0), seg = parseInt(mDMY[6] || 0);
+    const d = new Date(anio, mes - 1, dia, hora, min, seg);
     if (!isNaN(d.getTime()) && d.getDate() === dia && d.getMonth() === mes - 1) return d;
   }
 
-  // Fallback
+  // ISO con hora: 2026-05-30T20:50:25
   const d = new Date(str);
-  return isNaN(d.getTime()) ? null : d;
+  if (!isNaN(d.getTime())) return d;
+
+  return null;
 }
 
 export async function parsearExcelYape(file) {
@@ -117,7 +110,7 @@ export async function parsearExcelYape(file) {
           }
 
           gastos.push({
-            fecha: fecha.toISOString().split('T')[0],
+            fecha: fecha.toISOString(),
             descripcion: descFinal,
             monto: montoAbs,
             tipo,

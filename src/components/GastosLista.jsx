@@ -1,5 +1,5 @@
 import { Camera, CheckCircle, AlertTriangle, XCircle, Trash2 } from 'lucide-react';
-import { formatFecha, formatFechaCorta } from '../utils/formatFecha';
+import { formatFecha, formatFechaCorta, formatFechaHora } from '../utils/formatFecha';
 
 export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura, onEliminar }) {
   if (!gastos || gastos.length === 0) {
@@ -28,7 +28,7 @@ export default function GastosLista({ gastos, onAdjuntarFactura, onVerFactura, o
           <tbody className="divide-y divide-gray-100">
             {gastos.map((gasto) => (
               <tr key={gasto.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm text-gray-600">{formatFecha(gasto.fecha)}</td>
+                <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{formatFechaHora(gasto.fecha)}</td>
                 <td className="px-4 py-3">
                   <p className="text-sm font-medium truncate max-w-[250px]">{gasto.descripcion}</p>
                 </td>
