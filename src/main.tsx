@@ -8,6 +8,13 @@ import './index.css';
 
 initSentry();
 
+// Manejar redirección de GitHub Pages (404.html -> sessionStorage.redirect)
+const redirect = sessionStorage.getItem('redirect');
+if (redirect) {
+  sessionStorage.removeItem('redirect');
+  window.history.replaceState(null, '', redirect);
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
