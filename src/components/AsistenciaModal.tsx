@@ -6,10 +6,10 @@ interface AsistenciaModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: Omit<RegistroAsistencia, 'id' | 'horasNormales' | 'horasExtras'>) => void;
-  onMarcarFalta: (personalId: number, empresaId: number, fecha: string) => void;
+  onMarcarFalta: (personalId: string, empresaId: string, fecha: string) => void;
   personal: Personal;
   fecha: string;
-  empresaId: number;
+  empresaId: string;
   initial?: RegistroAsistencia | null;
 }
 

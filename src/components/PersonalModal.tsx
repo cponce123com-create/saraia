@@ -7,7 +7,7 @@ interface PersonalModalProps {
   onClose: () => void;
   onSave: (data: Omit<Personal, 'id' | 'createdAt'>) => void;
   initial?: Personal | null;
-  empresaId: number;
+  empresaId: string;
   existingDnis: string[];
 }
 

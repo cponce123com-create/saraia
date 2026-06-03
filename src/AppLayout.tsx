@@ -1,8 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload, Building2, Users, Clock, FileSpreadsheet } from 'lucide-react';
+import { Link, useLocation, Outlet } from 'react-router-dom';
+import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload, Building2, Users, Clock, FileSpreadsheet, LogOut, User } from 'lucide-react';
 import useGastosStore from './store/gastosStore';
 import { useYapeImport } from './hooks/useYapeImport';
-import type { AppLayoutProps } from './types';
+import { useAuth } from './context/AuthContext';
 
 const navGastos = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,8 +33,23 @@ const pageTitles: Record<string, string> = {
   '/reportes-hr': 'Reportes RR.HH.',
 };
 
-export default function AppLayout({ children }: AppLayoutProps) {
+const ROLE_LABELS: Record<string, string> = {
+  gerente: 'Gerente',
+  contador: 'Contador',
+  supervisor: 'Supervisor',
+  almacenero: 'Almacenero',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  gerente: 'bg-purple-100 text-purple-700',
+  contador: 'bg-blue-100 text-blue-700',
+  supervisor: 'bg-green-100 text-green-700',
+  almacenero: 'bg-orange-100 text-orange-700',
+};
+
+export default function AppLayout() {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const gastos = useGastosStore((s) => s.gastos);
   const conflictos = gastos.filter((g) => g.estado === 'conflicto').length;
   const { importar, importando } = useYapeImport();
@@ -102,7 +117,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           })}
         </nav>
 
-        <div className="px-3 pb-4">
+        {/* Usuario + Logout */}
+        <div className="border-t border-gray-100 px-3 py-3 space-y-2">
+          <div className="flex items-center gap-2.5 px-3 py-2">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+              <User size={16} className="text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">{user?.nombre || ''}</p>
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ROLE_COLORS[user?.rol || ''] || ''}`}>
+                {ROLE_LABELS[user?.rol || ''] || user?.rol || ''}
+              </span>
+            </div>
+          </div>
           <button
             onClick={handleImportClick}
             disabled={importando}
@@ -111,12 +138,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <Upload size={18} />
             {importando ? 'Importando...' : 'Importar YAPE'}
           </button>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
+          >
+            <LogOut size={16} />
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 
       {/* ─── Contenido principal ──────────────────────────────────── */}
       <div className="flex-1 md:ml-56 flex flex-col min-h-screen">
-        {/* Header móvil con título de página */}
         <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-sm shrink-0">
@@ -125,17 +158,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900">{pageTitles[location.pathname] || 'SaraIA'}</p>
             </div>
-            <button
-              onClick={handleImportClick}
-              className="bg-blue-600 text-white p-2 rounded-xl active:bg-blue-700 transition-colors"
-              title="Importar YAPE"
-            >
-              <Upload size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              {user && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[user.rol] || ''}`}>
+                  {ROLE_LABELS[user.rol] || user.rol}
+                </span>
+              )}
+              <button onClick={logout} className="p-2 text-gray-400 hover:text-red-500 active:bg-red-50 rounded-lg transition-colors" title="Cerrar sesión">
+                <LogOut size={18} />
+              </button>
+              <button
+                onClick={handleImportClick}
+                className="bg-blue-600 text-white p-2 rounded-xl active:bg-blue-700 transition-colors"
+                title="Importar YAPE"
+              >
+                <Upload size={18} />
+              </button>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-6">
+          <Outlet />
+        </main>
       </div>
 
       {/* ─── Bottom Nav Móvil ─────────────────────────────────────── */}

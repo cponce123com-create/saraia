@@ -141,7 +141,7 @@ export default function Gastos() {
               const factura = facturas.find((f) => f.id === gasto.facturaId);
               if (factura) setVerFactura(factura);
             }}
-            onEliminar={(id: number) => {
+            onEliminar={(id: string) => {
               eliminarGasto(id);
               toast.success('Gasto eliminado');
             }}

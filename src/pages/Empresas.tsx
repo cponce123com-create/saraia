@@ -68,7 +68,7 @@ export default function Empresas() {
     }
   };
 
-  const handleSelect = (id: number) => {
+  const handleSelect = (id: string) => {
     setEmpresaActiva(id);
     navigate('/personal');
   };

@@ -6,15 +6,18 @@ export type TipoComprobante = 'boleta' | 'factura' | 'ticket';
 
 // ─── Gasto en el sistema ────────────────────────────────────────
 export interface Gasto {
-  id: number;
+  id: string;
+  empresaId: string;
   fecha: string; // ISO
   descripcion: string;
   monto: number;
   tipo: GastoForma;
   mensaje: string | null;
   saldo: number;
-  facturaId: number | null;
+  facturaId: string | null;
   estado: GastoEstado;
+  matchStatus?: string | null;
+  facturaMonto?: number | null;
 }
 
 // ─── Gasto pendiente de importación (sin id ni estado) ──────────
@@ -39,24 +42,15 @@ export interface OCRData {
 
 // ─── Factura adjuntada ──────────────────────────────────────────
 export interface Factura {
-  id: number;
-  gastoId: number;
+  id: string;
+  gastoId: string;
   imageBase64: string;
   imageMime: string;
   ocrData: OCRData | null;
   matchStatus: MatchStatus;
   matchScore?: number;
-  candidatos?: number[];
+  candidatos?: string[];
   createdAt: string; // ISO
-}
-
-// ─── Registro de importación ────────────────────────────────────
-export interface Importacion {
-  id: number;
-  fecha: string; // ISO
-  cantidad: number;
-  duplicados: number;
-  gastoIds: number[]; // IDs de gastos asociados a esta importación
 }
 
 // ─── Resultados de matching ────────────────────────────────────
@@ -90,19 +84,22 @@ export interface ResultadoImportacion {
 export interface StoreState {
   gastos: Gasto[];
   facturas: Factura[];
-  proximoId: number;
   importaciones: Importacion[];
+  loading: boolean;
+  error: string | null;
 }
 
 export interface StoreActions {
-  importarGastos: (nuevosGastos: GastoPendiente[]) => ResultadoImportacion;
-  eliminarGasto: (gastoId: number) => void;
-  eliminarImportacion: (importacionId: number) => void;
-  adjuntarFactura: (gastoId: number, factura: Omit<Factura, 'id' | 'gastoId'>) => void;
-  actualizarEstado: (gastoId: number, estado: GastoEstado) => void;
-  asignarFactura: (facturaId: number, gastoId: number) => void;
-  getFactura: (gastoId: number) => Factura | null;
-  limpiarTodo: () => void;
+  cargarGastos: (empresaId?: string) => Promise<void>;
+  importarGastos: (nuevosGastos: GastoPendiente[], empresaId: string) => Promise<ResultadoImportacion>;
+  eliminarGasto: (gastoId: string) => Promise<void>;
+  eliminarImportacion: (importacionId: string) => void;
+  adjuntarFactura: (gastoId: string, factura: Omit<Factura, 'id' | 'gastoId'>, empresaId?: string) => Promise<void>;
+  actualizarEstado: (gastoId: string, estado: GastoEstado) => Promise<void>;
+  asignarFactura: (facturaId: string, gastoId: string) => Promise<void>;
+  getFactura: (gastoId: string) => Factura | null;
+  limpiarTodo: () => Promise<void>;
+  setEmpresaId: (id: string) => void;
 }
 
 export type Store = StoreState & StoreActions;
@@ -129,7 +126,7 @@ export interface GastosListaProps {
   gastos: Gasto[];
   onAdjuntarFactura: (gasto: Gasto) => void;
   onVerFactura: (gasto: Gasto) => void;
-  onEliminar?: (gastoId: number) => void;
+  onEliminar?: (gastoId: string) => void;
 }
 
 export interface CamaraModalProps {
@@ -142,13 +139,10 @@ export interface ComprobanteModalProps {
   onClose: () => void;
 }
 
-// ─── Vite env ────────────────────────────────────────────────────
-// Declared in vite-env.d.ts
-
 // ─── Módulo RR.HH. ──────────────────────────────────────────────
 
 export interface Empresa {
-  id: number;
+  id: string;
   nombre: string;
   ruc: string;
   color: string; // hex para identificación visual
@@ -161,8 +155,8 @@ export type TipoContrato = 'planilla' | 'recibo_honorarios' | 'CAS' | 'practican
 export type EstadoPersonal = 'activo' | 'inactivo' | 'vacaciones' | 'licencia';
 
 export interface Personal {
-  id: number;
-  empresaId: number;
+  id: string;
+  empresaId: string;
   dni: string;
   nombres: string;
   apellidos: string;
@@ -188,9 +182,9 @@ export type TipoRegistro = 'entrada' | 'salida' | 'entrada_tarde' | 'salida_anti
 export type TipoHoraExtra = 'normal' | 'nocturna' | 'feriado';
 
 export interface RegistroAsistencia {
-  id: number;
-  personalId: number;
-  empresaId: number;
+  id: string;
+  personalId: string;
+  empresaId: string;
   fecha: string; // YYYY-MM-DD
   horaEntrada: string | null; // HH:MM
   horaSalida: string | null;  // HH:MM
@@ -217,27 +211,40 @@ export interface HRStoreState {
   empresas: Empresa[];
   personal: Personal[];
   asistencias: RegistroAsistencia[];
-  empresaActivaId: number | null;
-  proximoIdHR: number;
+  empresaActivaId: string | null;
+  loading: boolean;
+  error: string | null;
 }
 
 export interface HRStoreActions {
-  agregarEmpresa: (data: Omit<Empresa, 'id' | 'createdAt'>) => Empresa;
-  editarEmpresa: (id: number, data: Partial<Empresa>) => void;
-  eliminarEmpresa: (id: number) => void;
-  setEmpresaActiva: (id: number | null) => void;
+  cargarEmpresas: () => Promise<void>;
+  agregarEmpresa: (data: Omit<Empresa, 'id' | 'createdAt'>) => Promise<Empresa>;
+  editarEmpresa: (id: string, data: Partial<Empresa>) => Promise<void>;
+  eliminarEmpresa: (id: string) => Promise<void>;
+  setEmpresaActiva: (id: string | null) => void;
   // Personal
-  agregarPersonal: (data: Omit<Personal, 'id' | 'createdAt'>) => Personal;
-  editarPersonal: (id: number, data: Partial<Personal>) => void;
-  eliminarPersonal: (id: number) => void;
-  getPersonalDeEmpresa: (empresaId: number) => Personal[];
+  cargarPersonal: (empresaId?: string) => Promise<void>;
+  agregarPersonal: (data: Omit<Personal, 'id' | 'createdAt'>) => Promise<Personal>;
+  editarPersonal: (id: string, data: Partial<Personal>) => Promise<void>;
+  eliminarPersonal: (id: string) => Promise<void>;
+  getPersonalDeEmpresa: (empresaId: string) => Personal[];
   // Asistencias
-  registrarAsistencia: (data: Omit<RegistroAsistencia, 'id' | 'horasNormales' | 'horasExtras'>) => RegistroAsistencia;
-  editarAsistencia: (id: number, data: Partial<RegistroAsistencia>) => void;
-  eliminarAsistencia: (id: number) => void;
-  getAsistenciasPorPeriodo: (empresaId: number, desde: string, hasta: string) => RegistroAsistencia[];
-  calcularResumenPeriodo: (empresaId: number, desde: string, hasta: string) => ResumenSemanalPersonal[];
+  cargarAsistencias: (params?: { empresaId?: string; personalId?: string; desde?: string; hasta?: string }) => Promise<void>;
+  registrarAsistencia: (data: Omit<RegistroAsistencia, 'id' | 'horasNormales' | 'horasExtras'>) => Promise<RegistroAsistencia>;
+  editarAsistencia: (id: string, data: Partial<RegistroAsistencia>) => Promise<void>;
+  eliminarAsistencia: (id: string) => Promise<void>;
+  getAsistenciasPorPeriodo: (empresaId: string, desde: string, hasta: string) => RegistroAsistencia[];
+  calcularResumenPeriodo: (empresaId: string, desde: string, hasta: string) => ResumenSemanalPersonal[];
   cargarDatosDemo: () => void;
 }
 
 export type HRStore = HRStoreState & HRStoreActions;
+
+// ─── Importación ────────────────────────────────────────────────
+export interface Importacion {
+  id: string;
+  fecha: string; // ISO
+  cantidad: number;
+  duplicados: number;
+  gastoIds: string[]; // IDs de gastos asociados a esta importación
+}

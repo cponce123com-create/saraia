@@ -111,7 +111,7 @@ export default function Asistencia() {
     }
   };
 
-  const handleMarcarFalta = (personalId: number, _empresaId: number, fecha: string) => {
+  const handleMarcarFalta = (personalId: string, _empresaId: string, fecha: string) => {
     const key = `${personalId}_${fecha}`;
     const existente = asistenciasPorPersonaYFecha.get(key);
     if (existente) {

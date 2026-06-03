@@ -10,7 +10,7 @@ interface ImportResult {
   resultado: ResultadoImportacion;
 }
 
-export function useYapeImport(): { importar: (file: File) => Promise<ImportResult | undefined>; importando: boolean } {
+export function useYapeImport(empresaId?: string): { importar: (file: File) => Promise<ImportResult | undefined>; importando: boolean } {
   const [importando, setImportando] = useState(false);
   const importarGastos = useGastosStore((s) => s.importarGastos);
 
@@ -19,6 +19,11 @@ export function useYapeImport(): { importar: (file: File) => Promise<ImportResul
 
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast.error('Solo archivos .xlsx o .xls');
+      return;
+    }
+
+    if (!empresaId) {
+      toast.error('Selecciona una empresa primero');
       return;
     }
 
@@ -35,9 +40,8 @@ export function useYapeImport(): { importar: (file: File) => Promise<ImportResul
         return;
       }
 
-      const resultado: ResultadoImportacion = importarGastos(gastos);
+      const resultado: ResultadoImportacion = await importarGastos(gastos, empresaId);
 
-      // Toast con resumen completo
       let msg = resultado.insertados + ' gastos importados';
       if (resumen) {
         msg += ' (' + resumen.leidas + ' leidas';

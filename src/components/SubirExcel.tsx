@@ -2,8 +2,12 @@ import { useRef, useState } from 'react';
 import { Upload, FileSpreadsheet } from 'lucide-react';
 import { useYapeImport } from '../hooks/useYapeImport';
 
-export default function SubirExcel() {
-  const { importar, importando } = useYapeImport();
+interface SubirExcelProps {
+  empresaId?: string;
+}
+
+export default function SubirExcel({ empresaId }: SubirExcelProps) {
+  const { importar, importando } = useYapeImport(empresaId);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
