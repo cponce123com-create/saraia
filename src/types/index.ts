@@ -237,6 +237,7 @@ export interface HRStoreActions {
   eliminarAsistencia: (id: number) => void;
   getAsistenciasPorPeriodo: (empresaId: number, desde: string, hasta: string) => RegistroAsistencia[];
   calcularResumenPeriodo: (empresaId: number, desde: string, hasta: string) => ResumenSemanalPersonal[];
+  cargarDatosDemo: () => void;
 }
 
 export type HRStore = HRStoreState & HRStoreActions;

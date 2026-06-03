@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building, Plus, Edit3, Trash2, Users, X, AlertTriangle } from 'lucide-react';
+import { Building, Plus, Edit3, Trash2, Users, X, AlertTriangle, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useHRStore from '../store/hrStore';
 
@@ -8,7 +8,7 @@ const COLORES = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2
 
 export default function Empresas() {
   const navigate = useNavigate();
-  const { empresas, personal, agregarEmpresa, editarEmpresa, eliminarEmpresa, setEmpresaActiva } = useHRStore();
+  const { empresas, personal, agregarEmpresa, editarEmpresa, eliminarEmpresa, setEmpresaActiva, cargarDatosDemo } = useHRStore();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [nombre, setNombre] = useState('');
@@ -101,6 +101,13 @@ export default function Empresas() {
             className="mt-4 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
           >
             Crear primera empresa
+          </button>
+          <button
+            onClick={() => { cargarDatosDemo(); toast.success('Datos demo cargados'); }}
+            className="mt-3 flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors"
+          >
+            <Sparkles size={18} />
+            Cargar datos demo
           </button>
         </div>
       ) : (
