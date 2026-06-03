@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import type {
   HRStore, Empresa, Personal, RegistroAsistencia, ResumenSemanalPersonal,
   TipoContrato, EstadoPersonal, TipoBanco, TipoCuenta, TipoHoraExtra,
 } from '../types';
-import type { EmpresaResponse, PersonalResponse, AsistenciaResponse } from '../lib/api';
+import type { EmpresaRow, PersonalRow, AsistenciaRow } from '../types';
 
 const JORNADA_MINUTOS = 480; // 8 horas
 
@@ -23,7 +23,7 @@ function calcularHoras(entrada: string | null, salida: string | null): { normale
   };
 }
 
-function mapEmpresa(r: EmpresaResponse): Empresa {
+function mapEmpresaRow(r: EmpresaRow): Empresa {
   return {
     id: r.id,
     nombre: r.nombre,
@@ -33,7 +33,7 @@ function mapEmpresa(r: EmpresaResponse): Empresa {
   };
 }
 
-function mapPersonal(r: PersonalResponse): Personal {
+function mapPersonalRow(r: PersonalRow): Personal {
   return {
     id: r.id,
     empresaId: r.empresa_id,
@@ -56,7 +56,7 @@ function mapPersonal(r: PersonalResponse): Personal {
   };
 }
 
-function mapAsistencia(r: AsistenciaResponse): RegistroAsistencia {
+function mapAsistenciaRow(r: AsistenciaRow): RegistroAsistencia {
   return {
     id: r.id,
     personalId: r.personal_id,
@@ -86,14 +86,15 @@ const useHRStore = create<HRStore>()((set, get) => ({
   cargarEmpresas: async () => {
     set({ loading: true, error: null });
     try {
-      const empresas = await api.empresas.list();
-      const mapped = empresas.map(mapEmpresa);
+      const { data, error } = await supabase.from('empresas').select('*');
+      if (error) throw new Error(error.message);
+
+      const mapped = (data || []).map(mapEmpresaRow);
       set({
         empresas: mapped,
         empresaActivaId: mapped.length > 0 ? mapped[0].id : null,
         loading: false,
       });
-      // Cargar personal de la empresa activa
       if (mapped.length > 0) {
         get().cargarPersonal(mapped[0].id);
       }
@@ -105,12 +106,16 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   agregarEmpresa: async (data): Promise<Empresa> => {
     try {
-      const empresa = await api.empresas.create({
-        nombre: data.nombre,
-        ruc: data.ruc,
-        color: data.color,
-      });
-      const mapped = mapEmpresa(empresa);
+      const { data: result, error } = await supabase
+        .from('empresas')
+        .insert({ nombre: data.nombre, ruc: data.ruc, color: data.color })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!result) throw new Error('No se pudo crear la empresa');
+
+      const mapped = mapEmpresaRow(result as EmpresaRow);
       set((s) => ({ empresas: [...s.empresas, mapped] }));
       return mapped;
     } catch (err) {
@@ -122,11 +127,14 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   editarEmpresa: async (id, data) => {
     try {
-      await api.empresas.update(id, {
-        nombre: data.nombre,
-        ruc: data.ruc,
-        color: data.color,
-      });
+      const updates: Record<string, string | undefined> = {};
+      if (data.nombre !== undefined) updates.nombre = data.nombre;
+      if (data.ruc !== undefined) updates.ruc = data.ruc;
+      if (data.color !== undefined) updates.color = data.color;
+
+      const { error } = await supabase.from('empresas').update(updates).eq('id', id);
+      if (error) throw new Error(error.message);
+
       set((s) => ({
         empresas: s.empresas.map((e) => (e.id === id ? { ...e, ...data } : e)),
       }));
@@ -138,7 +146,9 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   eliminarEmpresa: async (id) => {
     try {
-      await api.empresas.delete(id);
+      const { error } = await supabase.from('empresas').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+
       set((s) => ({
         empresas: s.empresas.filter((e) => e.id !== id),
         personal: s.personal.filter((p) => p.empresaId !== id),
@@ -160,9 +170,13 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   cargarPersonal: async (empresaId?: string) => {
     try {
-      const params = empresaId ? { empresa_id: empresaId } : undefined;
-      const personal = await api.personal.list(params);
-      set({ personal: personal.map(mapPersonal) });
+      let query = supabase.from('personal').select('*');
+      if (empresaId) query = query.eq('empresa_id', empresaId);
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+
+      set({ personal: (data || []).map(mapPersonalRow) });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al cargar personal';
       set({ error: msg });
@@ -171,25 +185,33 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   agregarPersonal: async (data): Promise<Personal> => {
     try {
-      const persona = await api.personal.create({
-        empresa_id: data.empresaId,
-        dni: data.dni,
-        nombres: data.nombres,
-        apellidos: data.apellidos,
-        celular: data.celular,
-        correo: data.correo,
-        cargo: data.cargo,
-        tipo_contrato: data.tipoContrato,
-        estado: data.estado,
-        banco1: data.banco1,
-        cuenta1: data.numeroCuenta1,
-        tipo_cuenta1: data.tipoCuenta1,
-        banco2: data.banco2,
-        cuenta2: data.numeroCuenta2,
-        tipo_cuenta2: data.tipoCuenta2,
-        sueldo_base: data.sueldoBase,
-      });
-      const mapped = mapPersonal(persona);
+      const { data: result, error } = await supabase
+        .from('personal')
+        .insert({
+          empresa_id: data.empresaId,
+          dni: data.dni,
+          nombres: data.nombres,
+          apellidos: data.apellidos,
+          celular: data.celular || null,
+          correo: data.correo || null,
+          cargo: data.cargo || null,
+          tipo_contrato: data.tipoContrato,
+          estado: data.estado,
+          banco1: data.banco1 || null,
+          cuenta1: data.numeroCuenta1 || null,
+          tipo_cuenta1: data.tipoCuenta1 || null,
+          banco2: data.banco2 || null,
+          cuenta2: data.numeroCuenta2 || null,
+          tipo_cuenta2: data.tipoCuenta2 || null,
+          sueldo_base: data.sueldoBase || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!result) throw new Error('No se pudo crear el personal');
+
+      const mapped = mapPersonalRow(result as PersonalRow);
       set((s) => ({ personal: [...s.personal, mapped] }));
       return mapped;
     } catch (err) {
@@ -201,23 +223,26 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   editarPersonal: async (id, data) => {
     try {
-      await api.personal.update(id, {
-        dni: data.dni,
-        nombres: data.nombres,
-        apellidos: data.apellidos,
-        celular: data.celular,
-        correo: data.correo,
-        cargo: data.cargo,
-        tipo_contrato: data.tipoContrato,
-        estado: data.estado,
-        banco1: data.banco1,
-        cuenta1: data.numeroCuenta1,
-        tipo_cuenta1: data.tipoCuenta1,
-        banco2: data.banco2,
-        cuenta2: data.numeroCuenta2,
-        tipo_cuenta2: data.tipoCuenta2,
-        sueldo_base: data.sueldoBase,
-      });
+      const updates: Record<string, unknown> = {};
+      if (data.dni !== undefined) updates.dni = data.dni;
+      if (data.nombres !== undefined) updates.nombres = data.nombres;
+      if (data.apellidos !== undefined) updates.apellidos = data.apellidos;
+      if (data.celular !== undefined) updates.celular = data.celular;
+      if (data.correo !== undefined) updates.correo = data.correo;
+      if (data.cargo !== undefined) updates.cargo = data.cargo;
+      if (data.tipoContrato !== undefined) updates.tipo_contrato = data.tipoContrato;
+      if (data.estado !== undefined) updates.estado = data.estado;
+      if (data.banco1 !== undefined) updates.banco1 = data.banco1;
+      if (data.numeroCuenta1 !== undefined) updates.cuenta1 = data.numeroCuenta1;
+      if (data.tipoCuenta1 !== undefined) updates.tipo_cuenta1 = data.tipoCuenta1;
+      if (data.banco2 !== undefined) updates.banco2 = data.banco2;
+      if (data.numeroCuenta2 !== undefined) updates.cuenta2 = data.numeroCuenta2;
+      if (data.tipoCuenta2 !== undefined) updates.tipo_cuenta2 = data.tipoCuenta2;
+      if (data.sueldoBase !== undefined) updates.sueldo_base = data.sueldoBase;
+
+      const { error } = await supabase.from('personal').update(updates).eq('id', id);
+      if (error) throw new Error(error.message);
+
       set((s) => ({
         personal: s.personal.map((p) => (p.id === id ? { ...p, ...data } : p)),
       }));
@@ -229,7 +254,9 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   eliminarPersonal: async (id) => {
     try {
-      await api.personal.delete(id);
+      const { error } = await supabase.from('personal').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+
       set((s) => ({
         personal: s.personal.filter((p) => p.id !== id),
         asistencias: s.asistencias.filter((a) => a.personalId !== id),
@@ -248,13 +275,17 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   cargarAsistencias: async (params?) => {
     try {
-      const asistencias = await api.asistencias.list({
-        empresa_id: params?.empresaId,
-        personal_id: params?.personalId,
-        desde: params?.desde,
-        hasta: params?.hasta,
-      });
-      set({ asistencias: asistencias.map(mapAsistencia) });
+      let query = supabase.from('asistencias').select('*');
+
+      if (params?.empresaId) query = query.eq('empresa_id', params.empresaId);
+      if (params?.personalId) query = query.eq('personal_id', params.personalId);
+      if (params?.desde) query = query.gte('fecha', params.desde);
+      if (params?.hasta) query = query.lte('fecha', params.hasta);
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+
+      set({ asistencias: (data || []).map(mapAsistenciaRow) });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al cargar asistencias';
       set({ error: msg });
@@ -264,20 +295,30 @@ const useHRStore = create<HRStore>()((set, get) => ({
   registrarAsistencia: async (data): Promise<RegistroAsistencia> => {
     try {
       const { normales, extras } = calcularHoras(data.horaEntrada, data.horaSalida);
-      const asistencia = await api.asistencias.create({
-        personal_id: data.personalId,
-        empresa_id: data.empresaId,
-        fecha: data.fecha,
-        hora_entrada: data.horaEntrada || undefined,
-        hora_salida: data.horaSalida || undefined,
-        tipo_hora_extra: data.tipoHoraExtra || undefined,
-        observacion: data.observacion || undefined,
-      });
+
+      const { data: result, error } = await supabase
+        .from('asistencias')
+        .insert({
+          personal_id: data.personalId,
+          empresa_id: data.empresaId,
+          fecha: data.fecha,
+          hora_entrada: data.horaEntrada || null,
+          hora_salida: data.horaSalida || null,
+          tipo_hora_extra: data.tipoHoraExtra || null,
+          observacion: data.observacion || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!result) throw new Error('No se pudo registrar la asistencia');
+
       const mapped = {
-        ...mapAsistencia(asistencia),
+        ...mapAsistenciaRow(result as AsistenciaRow),
         horasNormales: normales,
         horasExtras: extras,
       };
+
       set((s) => ({ asistencias: [...s.asistencias, mapped] }));
       return mapped;
     } catch (err) {
@@ -293,12 +334,14 @@ const useHRStore = create<HRStore>()((set, get) => ({
       const existente = state.asistencias.find((a) => a.id === id);
       if (!existente) return;
 
-      await api.asistencias.update(id, {
-        hora_entrada: data.horaEntrada || undefined,
-        hora_salida: data.horaSalida || undefined,
-        tipo_hora_extra: data.tipoHoraExtra || undefined,
-        observacion: data.observacion || undefined,
-      });
+      const updates: Record<string, unknown> = {};
+      if (data.horaEntrada !== undefined) updates.hora_entrada = data.horaEntrada;
+      if (data.horaSalida !== undefined) updates.hora_salida = data.horaSalida;
+      if (data.tipoHoraExtra !== undefined) updates.tipo_hora_extra = data.tipoHoraExtra;
+      if (data.observacion !== undefined) updates.observacion = data.observacion;
+
+      const { error } = await supabase.from('asistencias').update(updates).eq('id', id);
+      if (error) throw new Error(error.message);
 
       const merged = { ...existente, ...data };
       if (data.horaEntrada !== undefined || data.horaSalida !== undefined) {
@@ -318,7 +361,9 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   eliminarAsistencia: async (id) => {
     try {
-      await api.asistencias.delete(id);
+      const { error } = await supabase.from('asistencias').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+
       set((s) => ({
         asistencias: s.asistencias.filter((a) => a.id !== id),
       }));
@@ -359,7 +404,7 @@ const useHRStore = create<HRStore>()((set, get) => ({
       }
 
       return {
-        personalId: 0, // Se mantiene por compatibilidad de tipo
+        personalId: 0,
         nombres: persona.nombres,
         apellidos: persona.apellidos,
         totalHorasNormales: +totalHN.toFixed(2),
@@ -372,37 +417,52 @@ const useHRStore = create<HRStore>()((set, get) => ({
   },
 
   cargarDatosDemo: async () => {
-    // Verificar si ya hay empresas
     try {
-      const empresas = await api.empresas.list();
-      if (empresas.length > 0) {
-        // Ya hay datos, solo cargarlos
-        set({ empresas: empresas.map(mapEmpresa) });
+      const { data: existingEmpresas } = await supabase.from('empresas').select('id');
+      if (existingEmpresas && existingEmpresas.length > 0) {
+        // Ya hay datos, cargarlos
+        const { data } = await supabase.from('empresas').select('*');
+        if (data) set({ empresas: data.map(mapEmpresaRow) });
         return;
       }
     } catch {
-      // Si falla, probablemente no hay conexión a la DB
+      // Si falla, continuar con datos demo
     }
 
-    // Crear empresas demo
     try {
-      const emp1 = await api.empresas.create({
-        nombre: 'Transportes R\u00e1pidos S.A.C.',
-        ruc: '20123456789',
-        color: '#2563eb',
-      });
-      const emp2 = await api.empresas.create({
-        nombre: 'Inversiones del Sur E.I.R.L.',
-        ruc: '20987654321',
-        color: '#059669',
-      });
+      const { data: emp1, error: e1 } = await supabase
+        .from('empresas')
+        .insert({ nombre: 'Transportes Rápidos S.A.C.', ruc: '20123456789', color: '#2563eb' })
+        .select()
+        .single();
 
-      const p1 = await api.personal.create({ empresa_id: emp1.id, dni: '45123456', nombres: 'Ana Mar\u00eda', apellidos: 'Garc\u00eda L\u00f3pez', celular: '999111222', correo: 'ana.garcia@email.com', cargo: 'Asistente Administrativa', tipo_contrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '19123456789012', tipo_cuenta1: 'ahorro', sueldo_base: 1500 });
-      const p2 = await api.personal.create({ empresa_id: emp1.id, dni: '46234567', nombres: 'Carlos Miguel', apellidos: 'P\u00e9rez Castro', celular: '999333444', correo: 'carlos.perez@email.com', cargo: 'Chofer', tipo_contrato: 'planilla', estado: 'activo', banco1: 'Interbank', cuenta1: '098765432109', tipo_cuenta1: 'corriente', banco2: 'BBVA', cuenta2: '00123456789012345678', tipo_cuenta2: 'CTS', sueldo_base: 1800 });
-      const p3 = await api.personal.create({ empresa_id: emp1.id, dni: '47345678', nombres: 'Rosa Elena', apellidos: 'Mendoza Torres', celular: '999555666', correo: 'rosa.mendoza@email.com', cargo: 'Supervisora de Operaciones', tipo_contrato: 'CAS', estado: 'activo', banco1: 'Scotiabank', cuenta1: '123456789012', tipo_cuenta1: 'ahorro', sueldo_base: 2500 });
-      const p4 = await api.personal.create({ empresa_id: emp2.id, dni: '48456789', nombres: 'Pedro Antonio', apellidos: 'Ram\u00edrez Silva', celular: '999777888', correo: 'pedro.ramirez@email.com', cargo: 'Contador', tipo_contrato: 'recibo_honorarios', estado: 'activo', banco1: 'BCP', cuenta1: '123987654321', tipo_cuenta1: 'corriente', banco2: 'Nacion', cuenta2: '987654321098', tipo_cuenta2: 'interbancario', sueldo_base: 3200 });
-      const p5 = await api.personal.create({ empresa_id: emp2.id, dni: '49567890', nombres: 'Luc\u00eda Fernanda', apellidos: 'Huam\u00e1n Paredes', celular: '999000111', correo: 'lucia.huaman@email.com', cargo: 'Asistente de Ventas', tipo_contrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '00123456789012345679', tipo_cuenta1: 'ahorro', sueldo_base: 1300 });
-      await api.personal.create({ empresa_id: emp2.id, dni: '50678901', nombres: 'Jorge Luis', apellidos: 'Quispe Vargas', celular: '999222333', correo: 'jorge.quispe@email.com', cargo: 'Almacenero', tipo_contrato: 'CAS', estado: 'inactivo', banco1: 'Pichincha', cuenta1: '234567890123', tipo_cuenta1: 'ahorro', sueldo_base: 1100 });
+      if (e1) throw new Error(e1.message);
+
+      const { data: emp2, error: e2 } = await supabase
+        .from('empresas')
+        .insert({ nombre: 'Inversiones del Sur E.I.R.L.', ruc: '20987654321', color: '#059669' })
+        .select()
+        .single();
+
+      if (e2) throw new Error(e2.message);
+
+      if (!emp1 || !emp2) throw new Error('No se pudieron crear empresas demo');
+
+      const personalData = [
+        { empresa_id: emp1.id, dni: '45123456', nombres: 'Ana María', apellidos: 'García López', celular: '999111222', correo: 'ana.garcia@email.com', cargo: 'Asistente Administrativa', tipo_contrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '19123456789012', tipo_cuenta1: 'ahorro', sueldo_base: 1500 },
+        { empresa_id: emp1.id, dni: '46234567', nombres: 'Carlos Miguel', apellidos: 'Pérez Castro', celular: '999333444', correo: 'carlos.perez@email.com', cargo: 'Chofer', tipo_contrato: 'planilla', estado: 'activo', banco1: 'Interbank', cuenta1: '098765432109', tipo_cuenta1: 'corriente', banco2: 'BBVA', cuenta2: '00123456789012345678', tipo_cuenta2: 'CTS', sueldo_base: 1800 },
+        { empresa_id: emp1.id, dni: '47345678', nombres: 'Rosa Elena', apellidos: 'Mendoza Torres', celular: '999555666', correo: 'rosa.mendoza@email.com', cargo: 'Supervisora de Operaciones', tipo_contrato: 'CAS', estado: 'activo', banco1: 'Scotiabank', cuenta1: '123456789012', tipo_cuenta1: 'ahorro', sueldo_base: 2500 },
+        { empresa_id: emp2.id, dni: '48456789', nombres: 'Pedro Antonio', apellidos: 'Ramírez Silva', celular: '999777888', correo: 'pedro.ramirez@email.com', cargo: 'Contador', tipo_contrato: 'recibo_honorarios', estado: 'activo', banco1: 'BCP', cuenta1: '123987654321', tipo_cuenta1: 'corriente', banco2: 'Nacion', cuenta2: '987654321098', tipo_cuenta2: 'interbancario', sueldo_base: 3200 },
+        { empresa_id: emp2.id, dni: '49567890', nombres: 'Lucía Fernanda', apellidos: 'Huamán Paredes', celular: '999000111', correo: 'lucia.huaman@email.com', cargo: 'Asistente de Ventas', tipo_contrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '00123456789012345679', tipo_cuenta1: 'ahorro', sueldo_base: 1300 },
+        { empresa_id: emp2.id, dni: '50678901', nombres: 'Jorge Luis', apellidos: 'Quispe Vargas', celular: '999222333', correo: 'jorge.quispe@email.com', cargo: 'Almacenero', tipo_contrato: 'CAS', estado: 'inactivo', banco1: 'Pichincha', cuenta1: '234567890123', tipo_cuenta1: 'ahorro', sueldo_base: 1100 },
+      ];
+
+      const personalIds: Array<{ id: string; empresa_id: string }> = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const p of personalData) {
+        const { data: result, error } = await supabase.from('personal').insert(p as any).select('id, empresa_id').single();
+        if (!error && result) personalIds.push({ id: result.id, empresa_id: result.empresa_id });
+      }
 
       // Asistencias demo
       const hoy = new Date();
@@ -418,7 +478,6 @@ const useHRStore = create<HRStore>()((set, get) => ({
         ['08:30', '17:30'],
       ];
 
-      const personalIds = [p1, p2, p3, p4, p5];
       for (let d = 0; d < 5; d++) {
         const fecha = new Date(lunes);
         fecha.setDate(lunes.getDate() + d);
@@ -427,7 +486,7 @@ const useHRStore = create<HRStore>()((set, get) => ({
           if (d === 0 && idx === 4) continue;
           if (d === 3 && idx === 0) continue;
           const [entrada, salida] = horarios[(idx + d) % horarios.length];
-          await api.asistencias.create({
+          await supabase.from('asistencias').insert({
             personal_id: personalIds[idx].id,
             empresa_id: personalIds[idx].empresa_id,
             fecha: fechaStr,
@@ -437,9 +496,8 @@ const useHRStore = create<HRStore>()((set, get) => ({
         }
       }
 
-      // Recargar todo
       set({
-        empresas: [mapEmpresa(emp1), mapEmpresa(emp2)],
+        empresas: [mapEmpresaRow(emp1 as EmpresaRow), mapEmpresaRow(emp2 as EmpresaRow)],
         empresaActivaId: emp1.id,
       });
       await get().cargarPersonal(emp1.id);

@@ -1,26 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Building, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register, isAuthenticated } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const { user, signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nombre, setNombre] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Redirigir si ya está autenticado
-  if (isAuthenticated) {
-    const from = (location.state as any)?.from || '/';
-    navigate(from, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      const from = (location.state as { from?: string })?.from || '/';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,21 +27,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      if (mode === 'login') {
-        await login(email, password);
-      } else {
-        if (!nombre.trim()) {
-          throw new Error('El nombre es requerido');
-        }
-        await register({ email, password, nombre: nombre.trim() });
+      const { error: err } = await signIn(email, password);
+      if (err) {
+        setError(err);
       }
-      navigate('/', { replace: true });
+      // Si no hay error, el useEffect se encargará de redirigir
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
   };
+
+  // Si ya está autenticado, no renderizar el formulario
+  if (user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 flex items-center justify-center p-4">
@@ -58,40 +56,7 @@ export default function Login() {
 
         {/* Formulario */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-            <button
-              onClick={() => { setMode('login'); setError(null); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                mode === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={() => { setMode('register'); setError(null); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                mode === 'register' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Registrarse
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'register' && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo</label>
-                <input
-                  type="text"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  autoFocus={mode === 'register'}
-                />
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
               <input
@@ -100,7 +65,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="correo@ejemplo.com"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                autoFocus={mode === 'login'}
+                autoFocus
                 required
               />
             </div>
@@ -112,7 +77,7 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Tu contraseña"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   minLength={6}
                   required
@@ -142,17 +107,17 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {mode === 'login' ? 'Iniciando sesión...' : 'Registrando...'}
+                  Iniciando sesión...
                 </>
               ) : (
-                mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'
+                'Iniciar Sesión'
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-blue-200 text-xs mt-6">
-          SaraIA v2.0 — Backend + Autenticación
+          SaraIA — Powered by Supabase
         </p>
       </div>
     </div>

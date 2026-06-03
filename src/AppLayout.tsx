@@ -1,8 +1,12 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload, Building2, Users, Clock, FileSpreadsheet, LogOut, User } from 'lucide-react';
+import {
+  LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle,
+  Download, Upload, Building2, Users, Clock, FileSpreadsheet,
+  LogOut, User,
+} from 'lucide-react';
 import useGastosStore from './store/gastosStore';
 import { useYapeImport } from './hooks/useYapeImport';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 
 const navGastos = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -49,7 +53,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function AppLayout() {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { perfil, signOut } = useAuth();
   const gastos = useGastosStore((s) => s.gastos);
   const conflictos = gastos.filter((g) => g.estado === 'conflicto').length;
   const { importar, importando } = useYapeImport();
@@ -67,7 +71,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-dvh bg-gray-50">
-      {/* ─── Sidebar Desktop ─────────────────────────────────────── */}
+      {/* Sidebar Desktop */}
       <aside className="hidden md:flex md:flex-col md:w-56 md:fixed md:inset-y-0 bg-white border-r border-gray-200 z-30">
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center shadow-sm">
@@ -124,9 +128,9 @@ export default function AppLayout() {
               <User size={16} className="text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.nombre || ''}</p>
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ROLE_COLORS[user?.rol || ''] || ''}`}>
-                {ROLE_LABELS[user?.rol || ''] || user?.rol || ''}
+              <p className="text-sm font-medium text-gray-900 truncate">{perfil?.nombre || ''}</p>
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ROLE_COLORS[perfil?.rol || ''] || ''}`}>
+                {ROLE_LABELS[perfil?.rol || ''] || perfil?.rol || ''}
               </span>
             </div>
           </div>
@@ -139,7 +143,7 @@ export default function AppLayout() {
             {importando ? 'Importando...' : 'Importar YAPE'}
           </button>
           <button
-            onClick={logout}
+            onClick={signOut}
             className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             <LogOut size={16} />
@@ -148,7 +152,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* ─── Contenido principal ──────────────────────────────────── */}
+      {/* Contenido principal */}
       <div className="flex-1 md:ml-56 flex flex-col min-h-screen">
         <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
           <div className="flex items-center gap-2">
@@ -159,12 +163,12 @@ export default function AppLayout() {
               <p className="text-sm font-bold text-gray-900">{pageTitles[location.pathname] || 'SaraIA'}</p>
             </div>
             <div className="flex items-center gap-1">
-              {user && (
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[user.rol] || ''}`}>
-                  {ROLE_LABELS[user.rol] || user.rol}
+              {perfil && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[perfil.rol] || ''}`}>
+                  {ROLE_LABELS[perfil.rol] || perfil.rol}
                 </span>
               )}
-              <button onClick={logout} className="p-2 text-gray-400 hover:text-red-500 active:bg-red-50 rounded-lg transition-colors" title="Cerrar sesión">
+              <button onClick={signOut} className="p-2 text-gray-400 hover:text-red-500 active:bg-red-50 rounded-lg transition-colors" title="Cerrar sesión">
                 <LogOut size={18} />
               </button>
               <button
@@ -183,7 +187,7 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* ─── Bottom Nav Móvil ─────────────────────────────────────── */}
+      {/* Bottom Nav Móvil */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 pb-safe">
         <div className="flex items-center justify-around overflow-x-auto">
           {allPaths.map((item) => {

@@ -21,6 +21,7 @@ Aplicación web para gestión y rendición de cuentas de gastos. Importa extract
 ```bash
 # Clonar el repositorio
 git clone <repo-url>
+
 cd saraia
 
 # Instalar dependencias

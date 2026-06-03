@@ -2,8 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import AppLayout from './AppLayout';
-import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import RouteGuard from './components/RouteGuard';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Gastos = lazy(() => import('./pages/Gastos'));
@@ -15,6 +14,7 @@ const Personal = lazy(() => import('./pages/Personal'));
 const Asistencia = lazy(() => import('./pages/Asistencia'));
 const ReportesHR = lazy(() => import('./pages/Reportes'));
 const Login = lazy(() => import('./pages/Login'));
+const MigracionUnica = lazy(() => import('./pages/MigracionUnica'));
 
 function PageLoader() {
   return (
@@ -46,29 +46,43 @@ function FallbackError({ error, resetError }: { error: unknown; componentStack: 
 function App() {
   return (
     <Sentry.ErrorBoundary fallback={FallbackError}>
-      <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Login público */}
-            <Route path="/login" element={<Login />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Login público */}
+          <Route path="/login" element={<Login />} />
 
-            {/* Rutas protegidas con layout */}
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/gastos" element={<Gastos />} />
-              <Route path="/escanear" element={<Escanear />} />
-              <Route path="/resolver" element={<ResolverConflictos />} />
-              <Route path="/exportar" element={<Exportacion />} />
-              <Route path="/empresas" element={<Empresas />} />
-              <Route path="/personal" element={<Personal />} />
-              <Route path="/asistencia" element={<Asistencia />} />
-              <Route path="/reportes-hr" element={<ReportesHR />} />
-            </Route>
+          {/* Migración de datos (solo gerente) */}
+          <Route
+            path="/migracion-datos"
+            element={
+              <RouteGuard rolesPermitidos={['gerente']}>
+                <MigracionUnica />
+              </RouteGuard>
+            }
+          />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </AuthProvider>
+          {/* Rutas protegidas con layout */}
+          <Route
+            element={
+              <RouteGuard>
+                <AppLayout />
+              </RouteGuard>
+            }
+          >
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/gastos" element={<Gastos />} />
+            <Route path="/escanear" element={<Escanear />} />
+            <Route path="/resolver" element={<ResolverConflictos />} />
+            <Route path="/exportar" element={<Exportacion />} />
+            <Route path="/empresas" element={<Empresas />} />
+            <Route path="/personal" element={<Personal />} />
+            <Route path="/asistencia" element={<Asistencia />} />
+            <Route path="/reportes-hr" element={<ReportesHR />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Sentry.ErrorBoundary>
   );
 }
