@@ -144,3 +144,99 @@ export interface ComprobanteModalProps {
 
 // ─── Vite env ────────────────────────────────────────────────────
 // Declared in vite-env.d.ts
+
+// ─── Módulo RR.HH. ──────────────────────────────────────────────
+
+export interface Empresa {
+  id: number;
+  nombre: string;
+  ruc: string;
+  color: string; // hex para identificación visual
+  createdAt: string;
+}
+
+export type TipoCuenta = 'ahorro' | 'corriente' | 'CTS' | 'interbancario';
+export type TipoBanco = 'BCP' | 'BBVA' | 'Interbank' | 'Scotiabank' | 'BanBif' | 'Pichincha' | 'Nacion' | 'Otro';
+export type TipoContrato = 'planilla' | 'recibo_honorarios' | 'CAS' | 'practicante' | 'otro';
+export type EstadoPersonal = 'activo' | 'inactivo' | 'vacaciones' | 'licencia';
+
+export interface Personal {
+  id: number;
+  empresaId: number;
+  dni: string;
+  nombres: string;
+  apellidos: string;
+  celular: string | null;
+  correo: string | null;
+  cargo: string | null;
+  tipoContrato: TipoContrato;
+  estado: EstadoPersonal;
+  // Datos bancarios cuenta 1
+  banco1: TipoBanco | null;
+  numeroCuenta1: string | null;
+  tipoCuenta1: TipoCuenta | null;
+  // Datos bancarios cuenta 2
+  banco2: TipoBanco | null;
+  numeroCuenta2: string | null;
+  tipoCuenta2: TipoCuenta | null;
+  // Remuneración
+  sueldoBase: number | null;
+  createdAt: string;
+}
+
+export type TipoRegistro = 'entrada' | 'salida' | 'entrada_tarde' | 'salida_anticipada';
+export type TipoHoraExtra = 'normal' | 'nocturna' | 'feriado';
+
+export interface RegistroAsistencia {
+  id: number;
+  personalId: number;
+  empresaId: number;
+  fecha: string; // YYYY-MM-DD
+  horaEntrada: string | null; // HH:MM
+  horaSalida: string | null;  // HH:MM
+  horasNormales: number; // calculado
+  horasExtras: number;  // calculado
+  tipoHoraExtra: TipoHoraExtra | null;
+  observacion: string | null;
+}
+
+export interface ResumenSemanalPersonal {
+  personalId: number;
+  nombres: string;
+  apellidos: string;
+  totalHorasNormales: number;
+  totalHorasExtras: number;
+  totalDiasTrabajados: number;
+  diasFaltantes: number;
+  tardanzas: number;
+}
+
+// ─── Store de RR.HH. ──────────────────────────────────────────────
+
+export interface HRStoreState {
+  empresas: Empresa[];
+  personal: Personal[];
+  asistencias: RegistroAsistencia[];
+  empresaActivaId: number | null;
+  proximoIdHR: number;
+}
+
+export interface HRStoreActions {
+  agregarEmpresa: (data: Omit<Empresa, 'id' | 'createdAt'>) => Empresa;
+  editarEmpresa: (id: number, data: Partial<Empresa>) => void;
+  eliminarEmpresa: (id: number) => void;
+  setEmpresaActiva: (id: number | null) => void;
+  // Personal
+  agregarPersonal: (data: Omit<Personal, 'id' | 'createdAt'>) => Personal;
+  editarPersonal: (id: number, data: Partial<Personal>) => void;
+  eliminarPersonal: (id: number) => void;
+  getPersonalDeEmpresa: (empresaId: number) => Personal[];
+  // Asistencias
+  registrarAsistencia: (data: Omit<RegistroAsistencia, 'id' | 'horasNormales' | 'horasExtras'>) => RegistroAsistencia;
+  editarAsistencia: (id: number, data: Partial<RegistroAsistencia>) => void;
+  eliminarAsistencia: (id: number) => void;
+  getAsistenciasPorPeriodo: (empresaId: number, desde: string, hasta: string) => RegistroAsistencia[];
+  calcularResumenPeriodo: (empresaId: number, desde: string, hasta: string) => ResumenSemanalPersonal[];
+}
+
+export type HRStore = HRStoreState & HRStoreActions;

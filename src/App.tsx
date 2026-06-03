@@ -8,6 +8,10 @@ const Gastos = lazy(() => import('./pages/Gastos'));
 const Escanear = lazy(() => import('./pages/Escanear'));
 const ResolverConflictos = lazy(() => import('./components/ResolverConflictos'));
 const Exportacion = lazy(() => import('./pages/Exportacion'));
+const Empresas = lazy(() => import('./pages/Empresas'));
+const Personal = lazy(() => import('./pages/Personal'));
+const Asistencia = lazy(() => import('./pages/Asistencia'));
+const ReportesHR = lazy(() => import('./pages/Reportes'));
 
 function PageLoader() {
   return (
@@ -47,6 +51,10 @@ function App() {
             <Route path="/escanear" element={<Escanear />} />
             <Route path="/resolver" element={<ResolverConflictos />} />
             <Route path="/exportar" element={<Exportacion />} />
+            <Route path="/empresas" element={<Empresas />} />
+            <Route path="/personal" element={<Personal />} />
+            <Route path="/asistencia" element={<Asistencia />} />
+            <Route path="/reportes-hr" element={<ReportesHR />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

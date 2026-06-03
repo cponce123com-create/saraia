@@ -1,16 +1,25 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload } from 'lucide-react';
+import { LayoutDashboard, ArrowRightLeft, Camera, AlertTriangle, Download, Upload, Building2, Users, Clock, FileSpreadsheet } from 'lucide-react';
 import useGastosStore from './store/gastosStore';
 import { useYapeImport } from './hooks/useYapeImport';
 import type { AppLayoutProps } from './types';
 
-const navItems = [
-  { path: '/', label: 'Inicio', icon: LayoutDashboard },
+const navGastos = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/gastos', label: 'Gastos', icon: ArrowRightLeft },
   { path: '/escanear', label: 'Escanear', icon: Camera },
   { path: '/resolver', label: 'Resolver', icon: AlertTriangle },
   { path: '/exportar', label: 'Exportar', icon: Download },
 ];
+
+const navHR = [
+  { path: '/empresas', label: 'Empresas', icon: Building2 },
+  { path: '/personal', label: 'Personal', icon: Users },
+  { path: '/asistencia', label: 'Asistencia', icon: Clock },
+  { path: '/reportes-hr', label: 'Reportes RR.HH.', icon: FileSpreadsheet },
+];
+
+const allPaths = [...navGastos, ...navHR];
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -18,6 +27,10 @@ const pageTitles: Record<string, string> = {
   '/escanear': 'Escáner Masivo',
   '/resolver': 'Resolver Conflictos',
   '/exportar': 'Exportar Balance',
+  '/empresas': 'Empresas',
+  '/personal': 'Personal',
+  '/asistencia': 'Control de Asistencia',
+  '/reportes-hr': 'Reportes RR.HH.',
 };
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -48,8 +61,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <span className="font-bold text-xl text-gray-900">SaraIA</span>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Gastos</p>
+          {navGastos.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
@@ -66,6 +80,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     {conflictos}
                   </span>
                 )}
+              </Link>
+            );
+          })}
+          <div className="my-3 border-t border-gray-200" />
+          <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">RR.HH.</p>
+          {navHR.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
+                }`}
+              >
+                <item.icon size={20} />
+                <span>{item.label}</span>
               </Link>
             );
           })}
@@ -109,27 +140,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* ─── Bottom Nav Móvil ─────────────────────────────────────── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 pb-safe">
-        <div className="flex items-center justify-around">
-          {navItems.map((item) => {
+        <div className="flex items-center justify-around overflow-x-auto">
+          {allPaths.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center gap-0.5 py-2 px-3 min-w-0 flex-1 transition-colors ${
+                className={`flex flex-col items-center gap-0.5 py-2 px-2 min-w-0 flex-1 transition-colors ${
                   isActive ? 'text-blue-600' : 'text-gray-400'
                 }`}
               >
                 <div className="relative">
-                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
                   {item.path === '/resolver' && conflictos > 0 && (
                     <span className="absolute -top-1.5 -right-2 bg-orange-500 text-white text-[10px] font-bold w-4.5 h-4.5 flex items-center justify-center rounded-full shadow-sm">
                       {conflictos > 9 ? '9+' : conflictos}
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] font-medium leading-tight ${isActive ? 'font-semibold' : ''}`}>
-                  {item.label}
+                <span className={`text-[9px] font-medium leading-tight ${isActive ? 'font-semibold' : ''}`}>
+                  {item.label === 'Reportes RR.HH.' ? 'Reportes' : item.label}
                 </span>
               </Link>
             );
