@@ -418,17 +418,18 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   cargarDatosDemo: async () => {
     try {
-      const { data: existingEmpresas } = await supabase.from('empresas').select('id');
-      if (existingEmpresas && existingEmpresas.length > 0) {
+      // Verificar sesión activa
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Debes iniciar sesión para cargar datos demo');
+
+      // Verificar si ya hay empresas
+      const { data: existing } = await supabase.from('empresas').select('id').limit(1);
+      if (existing && existing.length > 0) {
         const { data } = await supabase.from('empresas').select('*');
         if (data) set({ empresas: data.map(mapEmpresaRow) });
-        return;
+        return; // ya hay datos, no duplicar
       }
-    } catch {
-      // Si falla, continuar con datos demo
-    }
 
-    try {
       // ─── 5 Empresas ──────────────────────────────────────────
       const empresasData = [
         { nombre: 'Constructora Los Andes S.A.C.', ruc: '20123456789', color: '#2563eb' },
@@ -441,12 +442,21 @@ const useHRStore = create<HRStore>()((set, get) => ({
       const empresasIds: Array<{ id: string; nombre: string }> = [];
       for (const e of empresasData) {
         const { data, error } = await supabase.from('empresas').insert(e).select('id, nombre').single();
+        if (error) console.warn('Error creando empresa:', error.message);
         if (!error && data) empresasIds.push({ id: data.id, nombre: data.nombre });
       }
 
-      if (empresasIds.length < 5) throw new Error('No se pudieron crear las 5 empresas demo');
+      if (empresasIds.length === 0) throw new Error('No se pudo crear ninguna empresa. Verifica que estés autenticado.');
 
-      // ─── Personal (25+ personas distribuidas en 5 empresas) ──
+      // ─── Vincular perfil del usuario con la primera empresa ──
+      const { error: perfilError } = await supabase
+        .from('perfiles')
+        .update({ empresa_id: empresasIds[0].id, rol: 'gerente' })
+        .eq('id', user.id);
+
+      if (perfilError) console.warn('No se pudo actualizar perfil (RLS):', perfilError.message);
+
+      // ─── Personal (26 personas en 5 empresas) ───────────────
       const personalSeed: Array<{
         empresaIdx: number;
         dni: string; nombres: string; apellidos: string;
@@ -456,32 +466,27 @@ const useHRStore = create<HRStore>()((set, get) => ({
         banco2?: string; cuenta2?: string; tipoCuenta2?: string;
         sueldo: number;
       }> = [
-        // Empresa 1: Constructora Los Andes (6 personas)
         { empresaIdx: 0, dni: '45123456', nombres: 'Ana María', apellidos: 'García López', celular: '999111222', correo: 'ana.garcia@constructora.com', cargo: 'Gerente General', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '19123456789012', tipoCuenta1: 'ahorro', banco2: 'BBVA', cuenta2: '00123456789012345678', tipoCuenta2: 'CTS', sueldo: 8500 },
         { empresaIdx: 0, dni: '46234567', nombres: 'Carlos Miguel', apellidos: 'Pérez Castro', celular: '999333444', correo: 'carlos.perez@constructora.com', cargo: 'Ingeniero Residente', tipoContrato: 'planilla', estado: 'activo', banco1: 'Interbank', cuenta1: '098765432109', tipoCuenta1: 'corriente', sueldo: 6200 },
         { empresaIdx: 0, dni: '47345678', nombres: 'Rosa Elena', apellidos: 'Mendoza Torres', celular: '999555666', correo: 'rosa.mendoza@constructora.com', cargo: 'Supervisora de Obra', tipoContrato: 'CAS', estado: 'activo', banco1: 'Scotiabank', cuenta1: '123456789012', tipoCuenta1: 'ahorro', sueldo: 3800 },
         { empresaIdx: 0, dni: '48456789', nombres: 'Pedro Antonio', apellidos: 'Ramírez Silva', celular: '999777888', correo: 'pedro.ramirez@constructora.com', cargo: 'Asistente Técnico', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '123987654321', tipoCuenta1: 'corriente', sueldo: 2200 },
         { empresaIdx: 0, dni: '49567890', nombres: 'Lucía Fernanda', apellidos: 'Huamán Paredes', celular: '999000111', correo: 'lucia.huaman@constructora.com', cargo: 'Administradora', tipoContrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '00123456789012345679', tipoCuenta1: 'ahorro', sueldo: 4500 },
         { empresaIdx: 0, dni: '50678901', nombres: 'Jorge Luis', apellidos: 'Quispe Vargas', celular: '999222333', correo: 'jorge.quispe@constructora.com', cargo: 'Almacenero', tipoContrato: 'CAS', estado: 'activo', banco1: 'Pichincha', cuenta1: '234567890123', tipoCuenta1: 'ahorro', sueldo: 1200 },
-        // Empresa 2: Transportes Rápidos (5 personas)
         { empresaIdx: 1, dni: '51789012', nombres: 'María Isabel', apellidos: 'Torres Rivas', celular: '998111333', correo: 'maria.torres@transportes.com', cargo: 'Gerente de Operaciones', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '345678901234', tipoCuenta1: 'ahorro', sueldo: 7200 },
         { empresaIdx: 1, dni: '52890123', nombres: 'Raúl Felipe', apellidos: 'Cárdenas Díaz', celular: '998444555', correo: 'raul.cardenas@transportes.com', cargo: 'Jefe de Flota', tipoContrato: 'planilla', estado: 'activo', banco1: 'Interbank', cuenta1: '456789012345', tipoCuenta1: 'corriente', banco2: 'Scotiabank', cuenta2: '567890123456', tipoCuenta2: 'CTS', sueldo: 4100 },
         { empresaIdx: 1, dni: '53901234', nombres: 'Sofía Alejandra', apellidos: 'Reyes Campos', celular: '998666777', correo: 'sofia.reyes@transportes.com', cargo: 'Asistente Logística', tipoContrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '678901234567', tipoCuenta1: 'ahorro', sueldo: 1800 },
         { empresaIdx: 1, dni: '54012345', nombres: 'Diego Armando', apellidos: 'Vega Zúñiga', celular: '998888999', correo: 'diego.vega@transportes.com', cargo: 'Chofer Pesado', tipoContrato: 'CAS', estado: 'activo', banco1: 'Nacion', cuenta1: '789012345678', tipoCuenta1: 'ahorro', sueldo: 2500 },
         { empresaIdx: 1, dni: '55123456', nombres: 'Valeria Sofía', apellidos: 'Mori Lozano', celular: '999000222', correo: 'valeria.mori@transportes.com', cargo: 'Chofer Ligero', tipoContrato: 'CAS', estado: 'vacaciones', banco1: 'BCP', cuenta1: '890123456789', tipoCuenta1: 'ahorro', sueldo: 2100 },
-        // Empresa 3: Inversiones Costa Verde (5 personas)
         { empresaIdx: 2, dni: '56234567', nombres: 'Óscar Manuel', apellidos: 'Salazar Paredes', celular: '997111444', correo: 'oscar.salazar@inversiones.com', cargo: 'Director Financiero', tipoContrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '901234567890', tipoCuenta1: 'corriente', sueldo: 9800 },
         { empresaIdx: 2, dni: '57345678', nombres: 'Claudia Patricia', apellidos: 'Rivera Gutiérrez', celular: '997222555', correo: 'claudia.rivera@inversiones.com', cargo: 'Contadora General', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '012345678901', tipoCuenta1: 'ahorro', banco2: 'Interbank', cuenta2: '123450987654', tipoCuenta2: 'interbancario', sueldo: 5500 },
         { empresaIdx: 2, dni: '58456789', nombres: 'Felipe Andrés', apellidos: 'Chávez Núñez', celular: '997333666', correo: 'felipe.chavez@inversiones.com', cargo: 'Analista de Inversiones', tipoContrato: 'planilla', estado: 'activo', banco1: 'Scotiabank', cuenta1: '234569012345', tipoCuenta1: 'ahorro', sueldo: 3500 },
         { empresaIdx: 2, dni: '59567890', nombres: 'Gabriela Paz', apellidos: 'Delgado Rojas', celular: '997444777', correo: 'gabriela.delgado@inversiones.com', cargo: 'Asistente Comercial', tipoContrato: 'CAS', estado: 'activo', banco1: 'Pichincha', cuenta1: '345670123456', tipoCuenta1: 'ahorro', sueldo: 1600 },
         { empresaIdx: 2, dni: '60678901', nombres: 'Humberto Rafael', apellidos: 'Castro Mendoza', celular: '997555888', correo: 'humberto.castro@inversiones.com', cargo: 'Recepcionista', tipoContrato: 'planilla', estado: 'licencia', banco1: 'Nacion', cuenta1: '456781234567', tipoCuenta1: 'ahorro', sueldo: 1100 },
-        // Empresa 4: Grupo Minero Arequipa (5 personas)
         { empresaIdx: 3, dni: '61789012', nombres: 'Luis Alberto', apellidos: 'Montesinos Puma', celular: '996111333', correo: 'luis.montesinos@minera.com', cargo: 'Superintendente de Mina', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '567892345678', tipoCuenta1: 'corriente', sueldo: 12000 },
         { empresaIdx: 3, dni: '62890123', nombres: 'Carmen Rosa', apellidos: 'Huancahuari Tito', celular: '996222444', correo: 'carmen.huancahuari@minera.com', cargo: 'Ingeniera de Seguridad', tipoContrato: 'planilla', estado: 'activo', banco1: 'Interbank', cuenta1: '678903456789', tipoCuenta1: 'ahorro', sueldo: 6400 },
         { empresaIdx: 3, dni: '63901234', nombres: 'Mario Antonio', apellidos: 'Condori Quispe', celular: '996333555', correo: 'mario.condori@minera.com', cargo: 'Operador de Equipos', tipoContrato: 'CAS', estado: 'activo', banco1: 'BBVA', cuenta1: '789014567890', tipoCuenta1: 'ahorro', sueldo: 2800 },
         { empresaIdx: 3, dni: '64012345', nombres: 'Elena Beatriz', apellidos: 'Apaza Nina', celular: '996444666', correo: 'elena.apaza@minera.com', cargo: 'Secretaria', tipoContrato: 'planilla', estado: 'activo', banco1: 'Scotiabank', cuenta1: '890125678901', tipoCuenta1: 'ahorro', sueldo: 1900 },
         { empresaIdx: 3, dni: '65123456', nombres: 'Pedro Pablo', apellidos: 'Arias Mamani', celular: '996555777', correo: 'pedro.arias@minera.com', cargo: 'Ayudante General', tipoContrato: 'recibo_honorarios', estado: 'activo', banco1: 'Pichincha', cuenta1: '901236789012', tipoCuenta1: 'ahorro', sueldo: 1300 },
-        // Empresa 5: Servicios Generales Selva (5 personas)
         { empresaIdx: 4, dni: '66234567', nombres: 'Juan Carlos', apellidos: 'Vásquez Ríos', celular: '995111444', correo: 'juan.vasquez@servicios.com', cargo: 'Gerente Comercial', tipoContrato: 'planilla', estado: 'activo', banco1: 'BCP', cuenta1: '012347890123', tipoCuenta1: 'corriente', sueldo: 6800 },
         { empresaIdx: 4, dni: '67345678', nombres: 'María Cristina', apellidos: 'López García', celular: '995222555', correo: 'maria.lopez@servicios.com', cargo: 'Supervisora de Limpieza', tipoContrato: 'planilla', estado: 'activo', banco1: 'BBVA', cuenta1: '123458901234', tipoCuenta1: 'ahorro', sueldo: 2000 },
         { empresaIdx: 4, dni: '68456789', nombres: 'Ronald David', apellidos: 'Pineda Torres', celular: '995333666', correo: 'ronald.pineda@servicios.com', cargo: 'Técnico de Mantenimiento', tipoContrato: 'CAS', estado: 'activo', banco1: 'Interbank', cuenta1: '234569012345', tipoCuenta1: 'ahorro', sueldo: 2400 },
@@ -489,106 +494,96 @@ const useHRStore = create<HRStore>()((set, get) => ({
         { empresaIdx: 4, dni: '70678901', nombres: 'Fidel Ernesto', apellidos: 'Sandoval Huerta', celular: '995555888', correo: 'fidel.sandoval@servicios.com', cargo: 'Vigilante', tipoContrato: 'CAS', estado: 'activo', banco1: 'Pichincha', cuenta1: '567892345678', tipoCuenta1: 'ahorro', sueldo: 1100 },
       ];
 
+      let personalCreado = 0;
       const personalIds: Array<{ id: string; empresa_id: string; idx: number }> = [];
       for (const p of personalSeed) {
         const empId = empresasIds[p.empresaIdx].id;
         const { data: result, error } = await supabase.from('personal').insert({
           empresa_id: empId,
-          dni: p.dni,
-          nombres: p.nombres,
-          apellidos: p.apellidos,
-          celular: p.celular || null,
-          correo: p.correo || null,
-          cargo: p.cargo || null,
-          tipo_contrato: p.tipoContrato,
-          estado: p.estado,
-          banco1: p.banco1 || null,
-          cuenta1: p.cuenta1 || null,
-          tipo_cuenta1: p.tipoCuenta1 || null,
-          banco2: p.banco2 || null,
-          cuenta2: p.cuenta2 || null,
-          tipo_cuenta2: p.tipoCuenta2 || null,
+          dni: p.dni, nombres: p.nombres, apellidos: p.apellidos,
+          celular: p.celular || null, correo: p.correo || null, cargo: p.cargo || null,
+          tipo_contrato: p.tipoContrato, estado: p.estado,
+          banco1: p.banco1 || null, cuenta1: p.cuenta1 || null, tipo_cuenta1: p.tipoCuenta1 || null,
+          banco2: p.banco2 || null, cuenta2: p.cuenta2 || null, tipo_cuenta2: p.tipoCuenta2 || null,
           sueldo_base: p.sueldo,
         }).select('id, empresa_id').single();
 
         if (!error && result) {
           personalIds.push({ id: result.id, empresa_id: result.empresa_id, idx: p.empresaIdx });
+          personalCreado++;
         }
       }
 
-      // ─── Asistencias: ÚLTIMOS 20 DÍAS HÁBILES ──────────────
+      // ─── Asistencias: 20 días hábiles ─────────────────────────
       const hoy = new Date();
       const diasHabiles: string[] = [];
       const iterador = new Date(hoy);
-      iterador.setDate(iterador.getDate() - 60); // retroceder hasta encontrar suficientes hábiles
+      iterador.setDate(iterador.getDate() - 60);
 
       while (diasHabiles.length < 20) {
         const dia = iterador.getDay();
-        if (dia >= 1 && dia <= 5) {
-          diasHabiles.push(iterador.toISOString().split('T')[0]);
-        }
+        if (dia >= 1 && dia <= 5) diasHabiles.push(iterador.toISOString().split('T')[0]);
         iterador.setDate(iterador.getDate() + 1);
       }
 
-      // Perfiles de horarios variados
-      const perfilesHorario: Array<{
-        entrada: string; salida: string;
-        probTardanza: number; probHe: number;
-      }> = [
-        { entrada: '08:00', salida: '17:00', probTardanza: 0.05, probHe: 0.1 },   // puntual
-        { entrada: '08:15', salida: '17:30', probTardanza: 0.3, probHe: 0.2 },    // algo tarde
-        { entrada: '07:45', salida: '16:45', probTardanza: 0.0, probHe: 0.05 },   // madrugador
-        { entrada: '08:30', salida: '18:30', probTardanza: 0.5, probHe: 0.6 },    // tarde + HE
-        { entrada: '07:00', salida: '15:00', probTardanza: 0.05, probHe: 0.0 },   // turno mañana
-        { entrada: '09:00', salida: '18:00', probTardanza: 0.4, probHe: 0.15 },   // administrativo flexible
-        { entrada: '08:00', salida: '20:00', probTardanza: 0.1, probHe: 0.9 },    // HE frecuentes
+      const perfilesHorario = [
+        { entrada: '08:00', salida: '17:00', probTardanza: 0.05, probHe: 0.1 },
+        { entrada: '08:15', salida: '17:30', probTardanza: 0.3, probHe: 0.2 },
+        { entrada: '07:45', salida: '16:45', probTardanza: 0.0, probHe: 0.05 },
+        { entrada: '08:30', salida: '18:30', probTardanza: 0.5, probHe: 0.6 },
+        { entrada: '07:00', salida: '15:00', probTardanza: 0.05, probHe: 0.0 },
+        { entrada: '09:00', salida: '18:00', probTardanza: 0.4, probHe: 0.15 },
+        { entrada: '08:00', salida: '20:00', probTardanza: 0.1, probHe: 0.9 },
       ];
 
+      let asistenciasCreadas = 0;
       for (const pid of personalIds) {
         const perfil = perfilesHorario[pid.idx % perfilesHorario.length];
-
         for (const fechaStr of diasHabiles) {
-          // Saltos aleatorios (días de falta)
           const hash = (pid.idx + fechaStr).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-          const faltar = hash % 11 === 0; // ~9% de inasistencias
-          if (faltar) continue;
+          if (hash % 11 === 0) continue;
 
           let entrada = perfil.entrada;
           let salida = perfil.salida;
 
-          // Aplicar tardanza según probabilidad
           if (Math.random() < perfil.probTardanza) {
-            const minTarde = Math.floor(Math.random() * 30) + 5; // 5-35 min
+            const min = Math.floor(Math.random() * 30) + 5;
             const [h, m] = entrada.split(':').map(Number);
-            const total = h * 60 + m + minTarde;
+            const total = h * 60 + m + min;
             entrada = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
           }
 
-          // Aplicar horas extras según probabilidad
           if (Math.random() < perfil.probHe) {
-            const minExtra = (Math.floor(Math.random() * 3) + 1) * 60; // 1-3h extra
+            const min = (Math.floor(Math.random() * 3) + 1) * 60;
             const [h, m] = salida.split(':').map(Number);
-            const total = h * 60 + m + minExtra;
+            const total = h * 60 + m + min;
             salida = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
           }
 
-          await supabase.from('asistencias').insert({
-            personal_id: pid.id,
-            empresa_id: pid.empresa_id,
-            fecha: fechaStr,
-            hora_entrada: entrada,
-            hora_salida: salida,
+          const { error: aErr } = await supabase.from('asistencias').insert({
+            personal_id: pid.id, empresa_id: pid.empresa_id,
+            fecha: fechaStr, hora_entrada: entrada, hora_salida: salida,
           });
+          if (!aErr) asistenciasCreadas++;
         }
       }
 
+      // ─── Cargar en store ─────────────────────────────────────
       set({
-        empresas: empresasIds.map((e) => ({ id: e.id, nombre: e.nombre, ruc: empresasData[empresasIds.indexOf(e)].ruc, color: empresasData[empresasIds.indexOf(e)].color, createdAt: new Date().toISOString() })),
+        empresas: empresasIds.map((e) => ({
+          id: e.id,
+          nombre: e.nombre,
+          ruc: empresasData[empresasIds.indexOf(e)].ruc,
+          color: empresasData[empresasIds.indexOf(e)].color,
+          createdAt: new Date().toISOString(),
+        })),
         empresaActivaId: empresasIds[0].id,
       });
       await get().cargarPersonal(empresasIds[0].id);
     } catch (err) {
-      console.error('[hrStore] Error cargando datos demo:', err);
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      console.error('[hrStore] Error cargando datos demo:', msg);
+      throw err; // relanzar para que el componente pueda mostrar toast.error
     }
   },
 }));

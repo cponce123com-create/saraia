@@ -10,11 +10,12 @@ export default function Empresas() {
   const navigate = useNavigate();
   const { empresas, personal, agregarEmpresa, editarEmpresa, eliminarEmpresa, setEmpresaActiva, cargarDatosDemo } = useHRStore();
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [nombre, setNombre] = useState('');
   const [ruc, setRuc] = useState('');
   const [color, setColor] = useState(COLORES[0]);
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [cargandoDemo, setCargandoDemo] = useState(false);
 
   const resetForm = () => {
     setNombre('');
@@ -24,7 +25,7 @@ export default function Empresas() {
     setShowForm(false);
   };
 
-  const openEdit = (id: number) => {
+  const openEdit = (id: string) => {
     const e = empresas.find((emp) => emp.id === id);
     if (!e) return;
     setNombre(e.nombre);
@@ -49,7 +50,7 @@ export default function Empresas() {
     resetForm();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     const tienePersonal = personal.some((p) => p.empresaId === id);
     if (tienePersonal) {
       const count = personal.filter((p) => p.empresaId === id).length;
@@ -65,6 +66,19 @@ export default function Empresas() {
     } else {
       eliminarEmpresa(id);
       toast.success('Empresa eliminada');
+    }
+  };
+
+  const handleCargarDemo = async () => {
+    setCargandoDemo(true);
+    try {
+      await cargarDatosDemo();
+      toast.success('Datos demo cargados exitosamente');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error(msg);
+    } finally {
+      setCargandoDemo(false);
     }
   };
 
@@ -103,11 +117,12 @@ export default function Empresas() {
             Crear primera empresa
           </button>
           <button
-            onClick={() => { cargarDatosDemo(); toast.success('Datos demo cargados'); }}
-            className="mt-3 flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors"
+            onClick={handleCargarDemo}
+            disabled={cargandoDemo}
+            className="mt-3 flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
           >
-            <Sparkles size={18} />
-            Cargar datos demo
+            <Sparkles size={18} className={cargandoDemo ? 'animate-spin' : ''} />
+            {cargandoDemo ? 'Cargando...' : 'Cargar datos demo'}
           </button>
         </div>
       ) : (
