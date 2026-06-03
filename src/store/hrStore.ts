@@ -418,17 +418,15 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
   cargarDatosDemo: async () => {
     try {
-      // Verificar sesión activa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Debes iniciar sesión para cargar datos demo');
 
-      // Verificar si ya hay empresas
-      const { data: existing } = await supabase.from('empresas').select('id').limit(1);
-      if (existing && existing.length > 0) {
-        const { data } = await supabase.from('empresas').select('*');
-        if (data) set({ empresas: data.map(mapEmpresaRow) });
-        return; // ya hay datos, no duplicar
-      }
+      // ─── Limpiar datos anteriores ────────────────────────────
+      await supabase.from('asistencias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('personal').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('facturas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('gastos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('empresas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
       // ─── 5 Empresas ──────────────────────────────────────────
       const empresasData = [
@@ -449,12 +447,10 @@ const useHRStore = create<HRStore>()((set, get) => ({
       if (empresasIds.length === 0) throw new Error('No se pudo crear ninguna empresa. Verifica que estés autenticado.');
 
       // ─── Vincular perfil del usuario con la primera empresa ──
-      const { error: perfilError } = await supabase
+      await supabase
         .from('perfiles')
         .update({ empresa_id: empresasIds[0].id, rol: 'gerente' })
         .eq('id', user.id);
-
-      if (perfilError) console.warn('No se pudo actualizar perfil (RLS):', perfilError.message);
 
       // ─── Personal (26 personas en 5 empresas) ───────────────
       const personalSeed: Array<{
@@ -494,7 +490,6 @@ const useHRStore = create<HRStore>()((set, get) => ({
         { empresaIdx: 4, dni: '70678901', nombres: 'Fidel Ernesto', apellidos: 'Sandoval Huerta', celular: '995555888', correo: 'fidel.sandoval@servicios.com', cargo: 'Vigilante', tipoContrato: 'CAS', estado: 'activo', banco1: 'Pichincha', cuenta1: '567892345678', tipoCuenta1: 'ahorro', sueldo: 1100 },
       ];
 
-      let personalCreado = 0;
       const personalIds: Array<{ id: string; empresa_id: string; idx: number }> = [];
       for (const p of personalSeed) {
         const empId = empresasIds[p.empresaIdx].id;
@@ -510,7 +505,6 @@ const useHRStore = create<HRStore>()((set, get) => ({
 
         if (!error && result) {
           personalIds.push({ id: result.id, empresa_id: result.empresa_id, idx: p.empresaIdx });
-          personalCreado++;
         }
       }
 
@@ -568,7 +562,7 @@ const useHRStore = create<HRStore>()((set, get) => ({
         }
       }
 
-      // ─── Cargar en store ─────────────────────────────────────
+      // ─── Cargar en store y refrescar ─────────────────────────
       const empresasMap = empresasIds.map((e) => {
         const idx = empresasData.findIndex((ed) => ed.nombre === e.nombre);
         return {
@@ -581,10 +575,14 @@ const useHRStore = create<HRStore>()((set, get) => ({
       });
       set({ empresas: empresasMap, empresaActivaId: empresasIds[0].id });
       await get().cargarPersonal(empresasIds[0].id);
+
+      // Forzar recarga de asistencias del periodo actual
+      const mesActual = hoy.toISOString().slice(0, 7);
+      await get().cargarAsistencias({ empresaId: empresasIds[0].id, desde: `${mesActual}-01`, hasta: hoy.toISOString().slice(0, 10) });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
       console.error('[hrStore] Error cargando datos demo:', msg);
-      throw err; // relanzar para que el componente pueda mostrar toast.error
+      throw err;
     }
   },
 }));
