@@ -57,6 +57,7 @@ function mapPersonalRow(r: PersonalRow): Personal {
 }
 
 function mapAsistenciaRow(r: AsistenciaRow): RegistroAsistencia {
+  const { normales, extras } = calcularHoras(r.hora_entrada, r.hora_salida);
   return {
     id: r.id,
     personalId: r.personal_id,
@@ -64,8 +65,8 @@ function mapAsistenciaRow(r: AsistenciaRow): RegistroAsistencia {
     fecha: r.fecha,
     horaEntrada: r.hora_entrada,
     horaSalida: r.hora_salida,
-    horasNormales: Number(r.horas_normales),
-    horasExtras: Number(r.horas_extras),
+    horasNormales: normales,
+    horasExtras: extras,
     tipoHoraExtra: r.tipo_hora_extra as TipoHoraExtra | null,
     observacion: r.observacion,
   };

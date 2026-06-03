@@ -46,7 +46,7 @@ function formatDiaCorto(dateStr: string): string {
 
 export default function Asistencia() {
   const navigate = useNavigate();
-  const { empresas, empresaActivaId, getPersonalDeEmpresa, getAsistenciasPorPeriodo, setEmpresaActiva, registrarAsistencia, editarAsistencia, eliminarAsistencia } = useHRStore();
+  const { empresas, empresaActivaId, getPersonalDeEmpresa, getAsistenciasPorPeriodo, setEmpresaActiva, cargarAsistencias, registrarAsistencia, editarAsistencia, eliminarAsistencia } = useHRStore();
 
   const [vista, setVista] = useState<'semana' | 'mes'>('semana');
   const [fechaRef, setFechaRef] = useState(new Date().toISOString().split('T')[0]);
@@ -62,6 +62,15 @@ export default function Asistencia() {
       navigate('/empresas');
     }
   }, [empresaActivaId, empresas.length, navigate]);
+
+  // Refrescar asistencias al montar o cambiar empresa
+  useEffect(() => {
+    if (empresaActivaId) {
+      const d = new Date(fechaRef);
+      const r = vista === 'semana' ? getWeekRange(d) : getMonthRange(d);
+      cargarAsistencias({ empresaId: empresaActivaId, desde: r.desde, hasta: r.hasta });
+    }
+  }, [empresaActivaId, fechaRef, vista]);
 
   const rango = useMemo(() => {
     const d = new Date(fechaRef);
