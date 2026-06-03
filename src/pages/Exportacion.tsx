@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { Download, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import useGastosStore from '../store/gastosStore';
+import { formatFecha } from '../utils/formatFecha';
 
 export default function Exportacion() {
   const gastos = useGastosStore((s) => s.gastos);
@@ -13,7 +14,7 @@ export default function Exportacion() {
     const rows = gastos.map((g) => {
       const factura = facturas.find((f) => f.id === g.facturaId);
       return {
-        Fecha: g.fecha,
+        Fecha: formatFecha(g.fecha),
         Descripción: g.descripcion,
         Tipo: g.tipo === 'gasto' ? 'Gasto' : 'Ingreso',
         'Monto (S/)': g.monto,
@@ -27,7 +28,7 @@ export default function Exportacion() {
                 : 'Pendiente',
         Proveedor: factura?.ocrData?.proveedor || '',
         'RUC Emisor': factura?.ocrData?.ruc || '',
-        'Fecha Factura': factura?.ocrData?.fecha || '',
+        'Fecha Factura': factura?.ocrData?.fecha ? formatFecha(factura.ocrData.fecha) : '',
         'Monto Factura (S/)': factura?.ocrData?.monto || '',
         'Tipo Comprobante': factura?.ocrData?.tipo_comprobante || '',
         'N° Comprobante': factura?.ocrData?.numero_comprobante || '',
@@ -37,7 +38,7 @@ export default function Exportacion() {
 
     // Agregar fila de totales
     const totalGastos = gastos.filter((g) => g.tipo === 'gasto').reduce((s, g) => s + g.monto, 0);
-    // const totalIngresos = ...; // no usado actualmente
+    const totalIngresos = gastos.filter(g => g.tipo === 'ingreso').reduce((s, g) => s + g.monto, 0);
 
     rows.push({
       Fecha: '',
@@ -52,6 +53,21 @@ export default function Exportacion() {
       'Tipo Comprobante': '',
       'N° Comprobante': '',
       'Score Match': '',
+    });
+
+    rows.push({
+      Fecha: '', Descripción: 'TOTAL INGRESOS', Tipo: '',
+      'Monto (S/)': totalIngresos,
+      'Estado Factura': '', Proveedor: '', 'RUC Emisor': '',
+      'Fecha Factura': '', 'Monto Factura (S/)': '',
+      'Tipo Comprobante': '', 'N° Comprobante': '', 'Score Match': '',
+    });
+    rows.push({
+      Fecha: '', Descripción: 'BALANCE NETO', Tipo: '',
+      'Monto (S/)': totalIngresos - totalGastos,
+      'Estado Factura': '', Proveedor: '', 'RUC Emisor': '',
+      'Fecha Factura': '', 'Monto Factura (S/)': '',
+      'Tipo Comprobante': '', 'N° Comprobante': '', 'Score Match': '',
     });
 
     // Resumen por proveedor
@@ -206,7 +222,7 @@ export default function Exportacion() {
                 const factura = facturas.find((f) => f.id === g.facturaId);
                 return (
                   <tr key={g.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-600">{g.fecha}</td>
+                    <td className="px-3 py-2 text-gray-600">{formatFecha(g.fecha)}</td>
                     <td className="px-3 py-2 font-medium truncate max-w-[200px]">{g.descripcion}</td>
                     <td
                       className={`px-3 py-2 text-right font-semibold ${g.tipo === 'gasto' ? 'text-red-600' : 'text-green-600'}`}

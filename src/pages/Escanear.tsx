@@ -3,6 +3,7 @@ import { Camera, Image as ImageIcon, X, Check, AlertTriangle, Edit3 as Edit3Icon
 import toast from 'react-hot-toast';
 import useGastosStore from '../store/gastosStore';
 import { encontrarMatch } from '../utils/matchingAlgorithm';
+import { useOCR } from '../hooks/useOCR';
 import type { OCRData, MatchResult, Gasto } from '../types';
 
 interface ImageEntry {
@@ -28,9 +29,11 @@ export default function Escanear() {
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState<ResultEntry[] | null>(null);
   const [verImagen, setVerImagen] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ actual: number; total: number } | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const { gastos, adjuntarFactura, actualizarEstado, facturas, asignarFactura } = useGastosStore();
+  const { extraerDatos } = useOCR();
 
   function handleFiles(fileList: FileList) {
     const nuevos: ImageEntry[] = Array.from(fileList).map((file, i) => ({
@@ -62,29 +65,21 @@ export default function Escanear() {
     setProcessing(true);
     const resultsArr: ResultEntry[] = [];
 
-    for (const img of images) {
+    setProgress({ actual: 0, total: images.length });
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      setProgress({ actual: i + 1, total: images.length });
       const b64 = img.b64 || (await fileToBase64(img.file));
       let ocrData: OCRData | null = null;
       let errorMsg: string | null = null;
 
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        const response = await fetch('/api/ocr', {
-          signal: controller.signal,
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: b64, mimeType: img.mime }),
-        });
-        clearTimeout(timeout);
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || `Error HTTP ${response.status}`);
-        ocrData = body;
+        ocrData = await extraerDatos(b64, img.mime);
+        if (!ocrData) {
+          errorMsg = 'OCR no pudo extraer datos';
+        }
       } catch (err) {
         errorMsg = err instanceof Error ? err.message : String(err);
-        if (err instanceof TypeError && err.message.includes('fetch')) {
-          errorMsg = 'Proxy no disponible. Ingresa los datos manualmente.';
-        }
       }
       let status = 'sin_match';
       let gastoAsignado: Gasto | null = null;
@@ -129,6 +124,7 @@ export default function Escanear() {
         b64,
       });
     }
+    setProgress(null);
 
     setResults(resultsArr);
     setProcessing(false);
@@ -247,9 +243,11 @@ export default function Escanear() {
                 disabled={processing}
                 className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50"
               >
-                {processing
-                  ? 'Procesando...'
-                  : 'PROCESAR ' + images.length + ' FOTO' + (images.length !== 1 ? 'S' : '')}
+                {processing && progress
+                  ? `Procesando ${progress.actual}/${progress.total}...`
+                  : processing
+                    ? 'Procesando...'
+                    : 'PROCESAR ' + images.length + ' FOTO' + (images.length !== 1 ? 'S' : '')}
               </button>
             </div>
           )}

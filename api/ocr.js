@@ -1,34 +1,47 @@
-/**
- * Serverless function para Vercel/Netlify.
- * Proxy seguro entre el frontend y DeepSeek API.
- * La API KEY vive solo en el servidor, nunca llega al frontend.
- */
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:4173'];
+
 export default async function handler(req, res) {
-  // Solo aceptar POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  const origin = req.headers['origin'] || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rate limit simple por IP (en memoria, suficiente para serverless)
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (!global._rl) global._rl = {};
+  const entry = global._rl[ip] || { count: 0, reset: now + 60000 };
+  if (now > entry.reset) {
+    entry.count = 0;
+    entry.reset = now + 60000;
+  }
+  entry.count++;
+  global._rl[ip] = entry;
+  if (entry.count > 30) {
+    return res.status(429).json({ error: 'Demasiadas solicitudes. Espera un momento.' });
   }
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    console.error('[API OCR] DEEPSEEK_API_KEY no configurada en el servidor');
     return res.status(500).json({ error: 'API key no configurada en el servidor' });
   }
 
   const { imageBase64, mimeType } = req.body;
-  if (!imageBase64) {
-    return res.status(400).json({ error: 'imageBase64 es requerido' });
-  }
+  if (!imageBase64) return res.status(400).json({ error: 'imageBase64 es requerido' });
 
   const dataUri = `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`;
 
   try {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: 'deepseek-vl2',
         messages: [
@@ -47,10 +60,7 @@ export default async function handler(req, res) {
   "numero_comprobante": string | null
 }`,
               },
-              {
-                type: 'image_url',
-                image_url: { url: dataUri },
-              },
+              { type: 'image_url', image_url: { url: dataUri } },
             ],
           },
         ],
@@ -62,28 +72,19 @@ export default async function handler(req, res) {
       const err = await response.json().catch(() => ({}));
       const status = response.status;
       let message = `Error HTTP ${status}`;
-
       if (status === 401) message = 'API key inválida';
-      else if (status === 429) message = 'Cuota de API excedida. Intenta de nuevo en unos segundos.';
-      else if (status >= 500) message = 'Error del servidor de DeepSeek. Intenta de nuevo.';
+      else if (status === 429) message = 'Cuota de API excedida. Intenta de nuevo.';
+      else if (status >= 500) message = 'Error del servidor de DeepSeek.';
       else if (err.error?.message) message = err.error.message;
-
       return res.status(status).json({ error: message });
     }
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || '';
-
-    // Extraer JSON de la respuesta
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return res.status(502).json({ error: 'No se pudo extraer JSON de la respuesta de DeepSeek' });
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return res.status(200).json(parsed);
+    if (!jsonMatch) return res.status(502).json({ error: 'No se pudo extraer JSON de la respuesta' });
+    return res.status(200).json(JSON.parse(jsonMatch[0]));
   } catch (err) {
-    console.error('[API OCR] Error:', err.message);
-    return res.status(500).json({ error: 'Error de conexión con DeepSeek: ' + err.message });
+    return res.status(500).json({ error: 'Error de conexión: ' + err.message });
   }
 }

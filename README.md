@@ -33,9 +33,12 @@ cp .env.example .env
 
 ## Variables de Entorno
 
-| Variable                | Descripción                              |
-| ----------------------- | ---------------------------------------- |
-| `VITE_DEEPSEEK_API_KEY` | API key de DeepSeek para OCR de facturas |
+| Variable           | Dónde        | Descripción                                       |
+| ------------------ | ------------ | ------------------------------------------------- |
+| `DEEPSEEK_API_KEY` | **Servidor** | API key de DeepSeek (Vercel/Netlify/Render panel) |
+| `ALLOWED_ORIGINS`  | **Servidor** | Dominios permitidos separados por coma            |
+
+> ⚠️ Nunca uses `VITE_DEEPSEEK_API_KEY` en producción. La key solo debe vivir en el servidor.
 
 ## Scripts
 

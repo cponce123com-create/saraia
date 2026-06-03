@@ -2,8 +2,8 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import type { OCRData } from '../types';
 
-const MAX_RETRIES = 3;
-const BASE_DELAY = 1000; // 1s
+const MAX_RETRIES = 4;
+const BASE_DELAY = 2000; // 2s — total ~30s con backoff exponencial
 
 /**
  * Hook para extraer datos de facturas usando DeepSeek-VL2 (visión).

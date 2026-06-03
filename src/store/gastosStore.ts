@@ -81,6 +81,7 @@ const useGastosStore = create<Store>()((set, get) => {
         fecha: new Date().toISOString(),
         cantidad: insertados.length,
         duplicados: duplicados.length,
+        gastoIds: insertados.map(g => g.id),
       };
 
       set((s) => ({
@@ -105,8 +106,22 @@ const useGastosStore = create<Store>()((set, get) => {
       saveState(get());
     },
 
-    eliminarImportacion: (_importacionId: number): void => {
-      // No implementado por ahora - requiere tracking de qué IDs pertenecen a cada importación
+    eliminarImportacion: (importacionId: number): void => {
+      const state = get();
+      const importacion = state.importaciones.find(i => i.id === importacionId);
+      if (!importacion) return;
+      const idsAEliminar = new Set(importacion.gastoIds || []);
+      const facturasAEliminar = new Set(
+        state.gastos
+          .filter(g => idsAEliminar.has(g.id) && g.facturaId !== null)
+          .map(g => g.facturaId as number),
+      );
+      set(s => ({
+        gastos: s.gastos.filter(g => !idsAEliminar.has(g.id)),
+        facturas: s.facturas.filter(f => !facturasAEliminar.has(f.id)),
+        importaciones: s.importaciones.filter(i => i.id !== importacionId),
+      }));
+      saveState(get());
     },
 
     adjuntarFactura: (gastoId: number, factura: Omit<Factura, 'id' | 'gastoId'>): void => {

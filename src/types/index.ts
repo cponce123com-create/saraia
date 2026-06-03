@@ -56,6 +56,7 @@ export interface Importacion {
   fecha: string; // ISO
   cantidad: number;
   duplicados: number;
+  gastoIds: number[]; // IDs de gastos asociados a esta importación
 }
 
 // ─── Resultados de matching ────────────────────────────────────
