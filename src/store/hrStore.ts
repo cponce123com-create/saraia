@@ -569,16 +569,17 @@ const useHRStore = create<HRStore>()((set, get) => ({
       }
 
       // ─── Cargar en store ─────────────────────────────────────
-      set({
-        empresas: empresasIds.map((e) => ({
+      const empresasMap = empresasIds.map((e) => {
+        const idx = empresasData.findIndex((ed) => ed.nombre === e.nombre);
+        return {
           id: e.id,
           nombre: e.nombre,
-          ruc: empresasData[empresasIds.indexOf(e)].ruc,
-          color: empresasData[empresasIds.indexOf(e)].color,
+          ruc: idx >= 0 ? empresasData[idx].ruc : '',
+          color: idx >= 0 ? empresasData[idx].color : '#2563eb',
           createdAt: new Date().toISOString(),
-        })),
-        empresaActivaId: empresasIds[0].id,
+        };
       });
+      set({ empresas: empresasMap, empresaActivaId: empresasIds[0].id });
       await get().cargarPersonal(empresasIds[0].id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
