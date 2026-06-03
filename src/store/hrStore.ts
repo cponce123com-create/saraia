@@ -508,19 +508,22 @@ const useHRStore = create<HRStore>()((set, get) => ({
         }
       }
 
-      // ─── Asistencias: 20 días hábiles ─────────────────────────
+      // ─── Asistencias: 20 días hábiles (desde ~35 días atrás hasta hoy) ──
       const hoy = new Date();
       const diasHabiles: string[] = [];
-      const iterador = new Date(hoy);
-      iterador.setDate(iterador.getDate() - 60);
-
-      while (diasHabiles.length < 20) {
-        const dia = iterador.getDay();
-        if (dia >= 1 && dia <= 5) diasHabiles.push(iterador.toISOString().split('T')[0]);
-        iterador.setDate(iterador.getDate() + 1);
+      const buscar = new Date(hoy);
+      buscar.setDate(buscar.getDate() - 40);
+      const tope = new Date(hoy);
+      while (diasHabiles.length < 20 && buscar <= tope) {
+        const dia = buscar.getDay();
+        if (dia >= 1 && dia <= 5) diasHabiles.push(buscar.toISOString().split('T')[0]);
+        buscar.setDate(buscar.getDate() + 1);
       }
 
-      const perfilesHorario = [
+      const perfilesHorario: Array<{
+        entrada: string; salida: string;
+        probTardanza: number; probHe: number;
+      }> = [
         { entrada: '08:00', salida: '17:00', probTardanza: 0.05, probHe: 0.1 },
         { entrada: '08:15', salida: '17:30', probTardanza: 0.3, probHe: 0.2 },
         { entrada: '07:45', salida: '16:45', probTardanza: 0.0, probHe: 0.05 },
@@ -530,12 +533,12 @@ const useHRStore = create<HRStore>()((set, get) => ({
         { entrada: '08:00', salida: '20:00', probTardanza: 0.1, probHe: 0.9 },
       ];
 
-      let asistenciasCreadas = 0;
+      let asistenciasInsertadas = 0;
       for (const pid of personalIds) {
         const perfil = perfilesHorario[pid.idx % perfilesHorario.length];
         for (const fechaStr of diasHabiles) {
           const hash = (pid.idx + fechaStr).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-          if (hash % 11 === 0) continue;
+          if (hash % 11 === 0) continue; // ~9% faltas
 
           let entrada = perfil.entrada;
           let salida = perfil.salida;
@@ -558,7 +561,7 @@ const useHRStore = create<HRStore>()((set, get) => ({
             personal_id: pid.id, empresa_id: pid.empresa_id,
             fecha: fechaStr, hora_entrada: entrada, hora_salida: salida,
           });
-          if (!aErr) asistenciasCreadas++;
+          if (!aErr) asistenciasInsertadas++;
         }
       }
 
@@ -576,9 +579,14 @@ const useHRStore = create<HRStore>()((set, get) => ({
       set({ empresas: empresasMap, empresaActivaId: empresasIds[0].id });
       await get().cargarPersonal(empresasIds[0].id);
 
-      // Forzar recarga de asistencias del periodo actual
-      const mesActual = hoy.toISOString().slice(0, 7);
-      await get().cargarAsistencias({ empresaId: empresasIds[0].id, desde: `${mesActual}-01`, hasta: hoy.toISOString().slice(0, 10) });
+      // Cargar asistencias del rango completo de dias habiles
+      if (diasHabiles.length > 0) {
+        await get().cargarAsistencias({
+          empresaId: empresasIds[0].id,
+          desde: diasHabiles[0],
+          hasta: diasHabiles[diasHabiles.length - 1],
+        });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
       console.error('[hrStore] Error cargando datos demo:', msg);

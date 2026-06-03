@@ -164,7 +164,7 @@ export default function Asistencia() {
           <div className="flex items-center gap-2">
             <select
               value={empresaActivaId || ''}
-              onChange={(e) => setEmpresaActiva(parseInt(e.target.value))}
+              onChange={(e) => setEmpresaActiva(e.target.value)}
               className="bg-white/20 text-white text-sm rounded-lg px-3 py-2 border border-white/30 outline-none"
             >
               {empresas.map((e) => (
